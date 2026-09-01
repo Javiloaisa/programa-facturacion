@@ -185,58 +185,47 @@ details.avanzado summary { cursor: pointer; font-weight: 600; padding: 0.4em 0; 
 
 /* --- Factura: vista de detalle / impresion ------------------------------ */
 /* Ancho de A4 (210mm) tambien en pantalla, para que la vista previa ya se
-   parezca a la hoja impresa. Sin sombras ni degradados (encargo §9): la
-   "modernidad" viene de una banda de color plano, esquinas redondeadas y
-   una caja de totales resaltada, no de efectos. En impresion.css el * {
-   color:#000; background:#fff } general aplana la banda a texto negro
-   sobre blanco, así que sigue siendo legible y no gasta tóner de color. */
+   parezca a la hoja impresa. Sin sombras ni degradados (encargo §9): un
+   filete de color arriba del todo, no un bloque, y el total en color en
+   vez de una caja rellena. */
 
 .factura-doc {
   background: var(--superficie);
   border: 1px solid var(--borde);
-  border-radius: 10px;
-  overflow: hidden;
+  border-top: 5px solid var(--acento);
   width: 210mm;
   max-width: 100%;
   margin: 0 auto;
 }
 
-.factura-banda {
+.factura-cuerpo { padding: 16mm; }
+
+.factura-cabecera {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  background: var(--acento);
-  color: #fff;
-  padding: 14mm 16mm 5mm;
+  align-items: flex-end;
+  padding-bottom: 6mm;
+  margin-bottom: 8mm;
+  border-bottom: 1px solid var(--borde);
 }
 .factura-etiqueta {
   font-size: 0.8em;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  opacity: 0.75;
+  letter-spacing: 0.14em;
+  color: var(--acento);
+  font-weight: 700;
+  margin-bottom: 0.3em;
 }
 .factura-numero {
   font-family: var(--fuente-num);
-  font-size: 1.9em;
-  font-weight: 700;
+  font-size: 2em;
+  font-weight: 300;
 }
-.factura-fechas { text-align: right; opacity: 0.9; }
-.factura-fechas div { margin-bottom: 0.25em; }
-.factura-fechas strong { font-weight: 700; }
+.factura-fechas { text-align: right; font-size: 0.9em; color: var(--texto-suave); line-height: 1.7; }
+.factura-fechas strong { color: var(--texto); font-weight: 700; }
+.factura-fechas .etiqueta { margin-top: 0.4em; }
 
-.factura-cuerpo { padding: 8mm 16mm 16mm; }
-
-.factura-estado {
-  display: flex;
-  align-items: center;
-  gap: 1em;
-  margin-bottom: 1.25em;
-  font-size: 0.9em;
-  color: var(--texto-suave);
-}
-/* La etiqueta de cobro va siempre al margen derecho, tanto si hay una nota
-   de rectificación a su izquierda como si es el único elemento. */
-.factura-estado > *:last-child { margin-left: auto; }
+.factura-nota { margin: -4mm 0 6mm; font-size: 0.9em; color: var(--texto-suave); }
 
 .factura-partes {
   display: grid;
@@ -246,39 +235,35 @@ details.avanzado summary { cursor: pointer; font-weight: 600; padding: 0.4em 0; 
 }
 .factura-partes h4 {
   margin: 0 0 0.4em;
-  font-size: 0.75em;
+  font-size: 0.7em;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   color: var(--texto-suave);
 }
 .factura-partes p { margin: 0; line-height: 1.55; }
 
 .factura-lineas { margin-bottom: 1.5em; }
-.factura-lineas thead th { border-bottom: 2px solid var(--borde); }
+.factura-lineas thead th { border-bottom: 1px solid var(--borde); }
 
 .totales-caja {
   display: flex;
   justify-content: flex-end;
   margin-bottom: 1em;
 }
-.factura-doc .totales {
-  width: 19em;
-  background: var(--acento-suave);
-  border-radius: 8px;
-  padding: 1em 1.25em;
-}
+.factura-doc .totales { width: 19em; }
 .factura-doc .totales .linea-total {
   display: flex;
   justify-content: space-between;
   gap: 1em;
   padding: 0.25em 0;
   white-space: nowrap;
+  color: var(--texto-suave);
 }
 .factura-doc .totales .linea-total.gran-total {
   font-weight: 700;
-  font-size: 1.2em;
+  font-size: 1.25em;
   color: var(--acento);
-  border-top: 1px solid var(--borde);
+  border-top: 1px solid var(--acento);
   margin-top: 0.4em;
   padding-top: 0.5em;
 }

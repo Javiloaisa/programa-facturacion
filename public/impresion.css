@@ -1,8 +1,8 @@
 /* Vista de impresion de una factura. Solo se aplica dentro de @media print,
    sobre la misma interfaz: no hay pagina HTML separada (encargo §5/§9).
    El PDF que genera "Imprimir -> Guardar como PDF" pasa por aqui tambien,
-   asi que se conserva el color de la banda y de la caja de totales (no
-   solo estructura): un PDF se comparte digitalmente, no gasta tinta. */
+   asi que se conserva el filete de color de la cabecera (no solo
+   estructura): un PDF se comparte digitalmente, no gasta tinta. */
 @media print {
   @page { size: A4; margin: 20mm; }
 
@@ -23,18 +23,17 @@
 
   .factura-doc {
     border: none;
+    border-top: 4px solid var(--acento);
     width: auto;
     max-width: none;
     margin: 0;
     box-shadow: none;
   }
 
-  /* La banda/cuerpo llevan su propio margen horizontal en pantalla para
-     simular el borde del papel; en la hoja real ese margen ya lo pone
-     @page, así que aquí se anula para no duplicarlo. */
-  .factura-banda { padding: 0 0 6mm; }
-  .factura-cuerpo { padding: 4mm 0 0; }
-  .factura-doc .totales { padding: 0.5em 0; }
+  /* El cuerpo lleva su propio margen en pantalla para simular el borde del
+     papel; en la hoja real ese margen ya lo pone @page, así que aquí se
+     reduce para no duplicarlo. */
+  .factura-cuerpo { padding: 6mm 0 0; }
 
   table { page-break-inside: avoid; }
 }

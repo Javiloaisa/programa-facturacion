@@ -468,23 +468,19 @@ function renderDetalleFactura(f) {
       <button id="btn-imprimir" class="primario">Imprimir</button>
     </div>
     <article class="factura-doc">
-      <div class="factura-banda">
-        <div>
-          <div class="factura-etiqueta">Factura</div>
-          <div class="factura-numero">${esc(f.numero || 'Borrador')}</div>
-        </div>
-        <div class="factura-fechas">
-          <div>Emisión <strong>${fmtFecha(f.fecha)}</strong></div>
-          <div>Vencimiento <strong>${fmtFecha(f.fechaVencimiento)}</strong></div>
-        </div>
-      </div>
-
       <div class="factura-cuerpo">
-        ${f.rectificaA || f.estado === 'confirmada' ? `
-        <div class="factura-estado">
-          ${f.rectificaA ? `<span>Rectifica a la factura ${esc(f.rectificaA)}</span>` : ''}
-          ${f.cobrada ? `<span class="etiqueta cobrada">Cobrada el ${fmtFecha(f.fechaCobro)}</span>` : (f.estado === 'confirmada' ? '<span class="etiqueta pendiente">Pendiente de cobro</span>' : '')}
-        </div>` : ''}
+        <div class="factura-cabecera">
+          <div>
+            <div class="factura-etiqueta">Factura</div>
+            <div class="factura-numero">${esc(f.numero || 'Borrador')}</div>
+          </div>
+          <div class="factura-fechas">
+            <div>Emisión <strong>${fmtFecha(f.fecha)}</strong></div>
+            <div>Vencimiento <strong>${fmtFecha(f.fechaVencimiento)}</strong></div>
+            ${f.cobrada ? `<span class="etiqueta cobrada">Cobrada el ${fmtFecha(f.fechaCobro)}</span>` : (f.estado === 'confirmada' ? '<span class="etiqueta pendiente">Pendiente de cobro</span>' : '')}
+          </div>
+        </div>
+        ${f.rectificaA ? `<p class="factura-nota">Rectifica a la factura ${esc(f.rectificaA)}</p>` : ''}
 
         <div class="factura-partes">
           <div class="parte">
