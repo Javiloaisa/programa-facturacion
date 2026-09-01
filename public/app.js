@@ -483,7 +483,6 @@ function renderDetalleFactura(f) {
             <table class="factura-mini-tabla">
               <tr><th>Número</th><td>${esc(f.numero || 'Borrador')}</td></tr>
               <tr><th>Fecha</th><td>${fmtFecha(f.fecha)}</td></tr>
-              <tr><th>Vencimiento</th><td>${fmtFecha(f.fechaVencimiento)}</td></tr>
             </table>
             ${f.cobrada ? `<span class="etiqueta cobrada">Cobrada el ${fmtFecha(f.fechaCobro)}</span>` : (f.estado === 'confirmada' ? '<span class="etiqueta pendiente">Pendiente de cobro</span>' : '')}
           </div>
