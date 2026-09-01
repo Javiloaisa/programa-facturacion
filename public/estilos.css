@@ -209,14 +209,15 @@ details.avanzado summary { cursor: pointer; font-weight: 600; padding: 0.4em 0; 
   border: 1px solid var(--borde);
   border-radius: 6px;
   overflow: hidden;
-  border-collapse: separate;
-  border-spacing: 0 3px;
+  border-collapse: collapse;
   font-size: 0.9em;
   margin-bottom: 10mm;
 }
 .factura-mini-tabla th, .factura-mini-tabla td { padding: 0.45em 1em; text-align: left; font-weight: 400; }
 .factura-mini-tabla th { background: var(--acento); color: #fff; font-weight: 600; }
 .factura-mini-tabla td { background: var(--fondo); color: var(--texto); }
+.factura-mini-tabla tr:first-child th { border-bottom: 1px solid rgba(255, 255, 255, 0.25); }
+.factura-mini-tabla tr:first-child td { border-bottom: 1px solid var(--borde); }
 
 .factura-nota { margin: 0 0 4mm; font-size: 0.9em; color: var(--texto-suave); }
 
