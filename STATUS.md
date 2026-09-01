@@ -14,37 +14,44 @@ encargo original está en [encargo-facturacion.md](encargo-facturacion.md).
       arquitectura ya tomadas (ver ese fichero para el detalle).
 - [x] Repositorio git inicializado y subido a
       https://github.com/Javiloaisa/programa-facturacion.git
+- [x] `test/fiscal.test.js` — 12 casos con los valores exactos del encargo
+      §10 (factura, modelo 303, modelo 130, arrastre de saldo de IVA,
+      amortización con prorrateo por días, cadena de huellas). Todos pasan
+      sin tocar `lib/fiscal.js`. De paso se corrigió el script `test` de
+      `package.json`: `node --test test/` da `MODULE_NOT_FOUND` en esta
+      instalación de Node (v24.15.0, Windows) tanto en bash como en
+      PowerShell; `node --test` sin argumento (autodescubrimiento) sí
+      funciona y es lo que usa ahora `npm test`.
+- [x] `lib/auth.js` — hash scrypt con sal + `timingSafeEqual`, `auth.json`
+      fuera de `FACTURACION_DATA`, cookie de sesión firmada HMAC-SHA256
+      (12h), rate limiting de login en memoria por IP (backoff exponencial
+      tras 5 fallos, tope 5 min, limpieza perezosa), prompt de contraseña
+      oculto con `process.stdin.setRawMode(true)` para `--set-password`.
+      Probado manualmente y ahora también cubierto por `test/api.test.js`
+      (ver más abajo).
+- [x] `server.js` + `lib/http-utils.js` — `crearApp(opciones)` testable sin
+      `.listen()` propio, router mínimo por regex, cabeceras de seguridad,
+      sesión obligatoria en toda `/api/` salvo `/api/login`, modo solo
+      lectura (423 solo en escritura de facturas), y todas las rutas de
+      PLAN.md → "Rutas API" (clientes, facturas con numeración/huella
+      atómicas + previsualizar/rectificar/cobrar, gastos, bienes, libros
+      CSV, impuestos 303/130 + presentar + plazos, config protegido,
+      exportar/importar). CLI con `--set-password` y arranque normal.
+- [x] `test/api.test.js` — 40 tests en total (fiscal + API) en verde,
+      incluida la prueba obligatoria de 100 altas de factura concurrentes
+      sin huecos ni duplicados, el rate limiting de login (429 tras 5
+      fallos), y el modo solo lectura al corromper a mano una huella.
 
 ## Pendiente (en este orden, según PLAN.md → "Orden de implementación")
 
-1. **`test/fiscal.test.js`** — escribir los casos exactos del encargo §10
-   (factura, modelo 303, modelo 130, arrastre de saldo IVA, amortización,
-   cadena de huellas) y ejecutarlos contra `lib/fiscal.js` antes de construir
-   nada más. Es el primer paso real de código pendiente.
-2. **`lib/auth.js`** — scrypt + sal, `auth.json` fuera de `FACTURACION_DATA`,
-   sesión firmada HMAC-SHA256, prompt de contraseña oculto con
-   `process.stdin.setRawMode(true)`, rate limiting de login en memoria.
-3. **`server.js`** — `crearApp(opciones)` sin `.listen()` propio (testable),
-   router mínimo sobre `node:http`, middleware de sesión, servir `public/`
-   sin path traversal, cabeceras de seguridad (CSP sin `unsafe-inline`,
-   `X-Content-Type-Options`, `Referrer-Policy`), arranque con
-   `verificarCadena` + comprobación de contadores → `soloLectura`.
-4. Rutas API en orden: clientes → facturas (numeración/huella atómicas +
-   `previsualizar`) → gastos → bienes → libros (CSV) → impuestos → ajustes.
-   Ver PLAN.md → "Rutas API" para las firmas exactas de cada endpoint y los
-   nombres de campo que `fiscal.js` exige literalmente en las facturas
-   (`numero` como string `"A-0001"`, `tipo` `F1`/`R1`, `nifEmisor`,
-   `generadaEn` con huso horario, `rectificaA`).
-5. **`test/api.test.js`** — incluye la prueba obligatoria de 100 altas de
-   factura concurrentes sin huecos ni duplicados en la numeración.
-6. Frontend (`public/index.html`, `public/app.js`, `public/estilos.css`,
+1. Frontend (`public/index.html`, `public/app.js`, `public/estilos.css`,
    `public/impresion.css`) — SPA de una sola página, sin build, sin
    `localStorage`. Login como estado de la propia SPA, impresión vía
    `@media print` en `impresion.css` (NO páginas separadas).
-7. `deploy/` (systemd + Tailscale) y `README.md` raíz (incluye qué falta
+2. `deploy/` (systemd + Tailscale) y `README.md` raíz (incluye qué falta
    para VeriFactu completo y el aviso del modelo 347, ambos fuera de
    alcance según encargo §11).
-8. Repaso final contra el encargo: reglas de negocio innegociables (§4),
+3. Repaso final contra el encargo: reglas de negocio innegociables (§4),
    autenticación (§7), diseño de interfaz (§9).
 
 ## Decisiones ya cerradas (no volver a discutir, ver PLAN.md para el porqué)
@@ -61,6 +68,8 @@ encargo original está en [encargo-facturacion.md](encargo-facturacion.md).
 
 ## Cómo continuar
 
-Retomar por el punto 1 de "Pendiente" (`test/fiscal.test.js`), siguiendo el
-orden de implementación de `PLAN.md`. No hace falta releer el encargo
-completo: `PLAN.md` ya resume todas las decisiones necesarias.
+Retomar por el punto 1 de "Pendiente" (frontend en `public/`), siguiendo el
+orden de implementación de `PLAN.md`. El backend completo ya existe y está
+probado (`npm test` → 40/40 en verde); el frontend solo necesita consumir
+las rutas ya descritas en PLAN.md → "Rutas API". No hace falta releer el
+encargo completo: `PLAN.md` ya resume todas las decisiones necesarias.
