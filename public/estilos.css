@@ -184,95 +184,74 @@ details.avanzado { margin-top: 1em; }
 details.avanzado summary { cursor: pointer; font-weight: 600; padding: 0.4em 0; }
 
 /* --- Factura: vista de detalle / impresion ------------------------------ */
-/* Ancho de A4 (210mm) tambien en pantalla, para que la vista previa ya se
-   parezca a la hoja impresa. Sin sombras ni degradados (encargo §9): un
-   filete de color arriba del todo, no un bloque, y el total en color en
-   vez de una caja rellena. */
+/* Ancho de A4 (210mm) tambien en pantalla. Referencia elegida por el
+   usuario: documento en blanco y negro, sin bloques de color, con mucho
+   aire y solo filetes finos como separadores (no lineas verticales de
+   tabla, no cajas rellenas). El unico color de acento del resto de la
+   app no aparece aqui a proposito: es la version "documento formal". */
 
 .factura-doc {
   background: var(--superficie);
   border: 1px solid var(--borde);
-  border-top: 5px solid var(--acento);
   width: 210mm;
   max-width: 100%;
   margin: 0 auto;
+  min-height: 297mm;
 }
 
-.factura-cuerpo { padding: 16mm; }
+.factura-cuerpo { padding: 20mm; }
 
 .factura-cabecera {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
-  padding-bottom: 6mm;
-  margin-bottom: 8mm;
-  border-bottom: 1px solid var(--borde);
+  align-items: flex-start;
+  margin-bottom: 14mm;
 }
-.factura-etiqueta {
-  font-size: 0.8em;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: var(--acento);
-  font-weight: 700;
-  margin-bottom: 0.3em;
-}
-.factura-numero {
-  font-family: var(--fuente-num);
-  font-size: 2em;
-  font-weight: 300;
-}
-.factura-fechas { text-align: right; font-size: 0.9em; color: var(--texto-suave); line-height: 1.7; }
-.factura-fechas strong { color: var(--texto); font-weight: 700; }
-.factura-fechas .etiqueta { margin-top: 0.4em; }
+.factura-emisor-cabecera { line-height: 1.7; }
+.factura-meta-derecha { text-align: right; }
+.factura-numero-grande { font-size: 1.3em; font-weight: 700; margin-bottom: 0.3em; }
+.factura-fecha-gris { color: var(--texto-suave); }
+.factura-fecha-gris strong { color: var(--texto); font-weight: 600; }
+.factura-meta-derecha .etiqueta { margin-top: 0.5em; }
 
-.factura-nota { margin: -4mm 0 6mm; font-size: 0.9em; color: var(--texto-suave); }
+.factura-nota { margin: -8mm 0 8mm; font-size: 0.9em; color: var(--texto-suave); }
 
-.factura-partes {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2em;
-  margin-bottom: 2em;
-}
-.factura-partes h4 {
-  margin: 0 0 0.4em;
-  font-size: 0.7em;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--texto-suave);
-}
-.factura-partes p { margin: 0; line-height: 1.55; }
+.factura-cliente { margin-bottom: 10mm; }
+.factura-cliente h4 { margin: 0 0 0.5em; font-size: 1em; font-weight: 700; }
+.factura-cliente p { margin: 0; line-height: 1.7; }
 
-.factura-lineas { margin-bottom: 1.5em; }
-.factura-lineas thead th { border-bottom: 1px solid var(--borde); }
+.factura-lineas { margin-bottom: 2em; }
+.factura-lineas thead th { padding-bottom: 0.6em; border-bottom: 1px solid var(--borde); font-weight: 700; color: var(--texto); }
+.factura-lineas td { padding: 0.9em 0.6em 0.9em 0; border-bottom: 1px solid var(--borde); color: var(--texto-suave); }
+.factura-lineas td:first-child { padding-left: 0; }
 
 .totales-caja {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 1em;
+  margin-bottom: 2em;
 }
-.factura-doc .totales { width: 19em; }
+.factura-doc .totales { width: 20em; border: 1px solid var(--borde); }
 .factura-doc .totales .linea-total {
   display: flex;
   justify-content: space-between;
   gap: 1em;
-  padding: 0.25em 0;
+  padding: 0.7em 1em;
   white-space: nowrap;
   color: var(--texto-suave);
+  border-bottom: 1px solid var(--borde);
 }
 .factura-doc .totales .linea-total.gran-total {
   font-weight: 700;
-  font-size: 1.25em;
-  color: var(--acento);
-  border-top: 1px solid var(--acento);
-  margin-top: 0.4em;
-  padding-top: 0.5em;
+  font-size: 1.1em;
+  color: var(--texto);
+  border-bottom: none;
 }
 
 .factura-pie {
-  padding-top: 1em;
-  border-top: 1px solid var(--borde);
+  margin-top: 4em;
   font-size: 0.85em;
   color: var(--texto-suave);
+  line-height: 1.6;
 }
 
 @media (prefers-reduced-motion: reduce) {
