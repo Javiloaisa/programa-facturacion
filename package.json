@@ -1,0 +1,13 @@
+{
+  "name": "facturacion",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Aplicacion de facturacion y contabilidad para autonomo (Node puro, sin dependencias)",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/"
+  }
+}
