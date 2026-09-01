@@ -228,12 +228,15 @@ details.avanzado summary { cursor: pointer; font-weight: 600; padding: 0.4em 0; 
 
 .factura-estado {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 1em;
   margin-bottom: 1.25em;
   font-size: 0.9em;
   color: var(--texto-suave);
 }
+/* La etiqueta de cobro va siempre al margen derecho, tanto si hay una nota
+   de rectificación a su izquierda como si es el único elemento. */
+.factura-estado > *:last-child { margin-left: auto; }
 
 .factura-partes {
   display: grid;

@@ -482,7 +482,7 @@ function renderDetalleFactura(f) {
       <div class="factura-cuerpo">
         ${f.rectificaA || f.estado === 'confirmada' ? `
         <div class="factura-estado">
-          ${f.rectificaA ? `<span>Rectifica a la factura ${esc(f.rectificaA)}</span>` : '<span></span>'}
+          ${f.rectificaA ? `<span>Rectifica a la factura ${esc(f.rectificaA)}</span>` : ''}
           ${f.cobrada ? `<span class="etiqueta cobrada">Cobrada el ${fmtFecha(f.fechaCobro)}</span>` : (f.estado === 'confirmada' ? '<span class="etiqueta pendiente">Pendiente de cobro</span>' : '')}
         </div>` : ''}
 
