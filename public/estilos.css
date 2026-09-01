@@ -184,11 +184,12 @@ details.avanzado { margin-top: 1em; }
 details.avanzado summary { cursor: pointer; font-weight: 600; padding: 0.4em 0; }
 
 /* --- Factura: vista de detalle / impresion ------------------------------ */
-/* Ancho de A4 (210mm) tambien en pantalla. Referencia elegida por el
-   usuario: documento en blanco y negro, sin bloques de color, con mucho
-   aire y solo filetes finos como separadores (no lineas verticales de
-   tabla, no cajas rellenas). El unico color de acento del resto de la
-   app no aparece aqui a proposito: es la version "documento formal". */
+/* Ancho de A4 (210mm) tambien en pantalla. El usuario trajo una segunda
+   referencia (una factura real de otra herramienta) pidiendo algo
+   parecido pero no calcado: cabecera con mini-tabla de metadatos y caja
+   de cliente en gris, tabla de lineas con cabecera de color, barra de
+   "Cuenta de pago". Se usa el unico color de acento de la app (var(--acento))
+   en vez del azul propio de esa referencia. */
 
 .factura-doc {
   background: var(--superficie);
@@ -205,54 +206,72 @@ details.avanzado summary { cursor: pointer; font-weight: 600; padding: 0.4em 0; 
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 14mm;
+  margin-bottom: 8mm;
 }
-.factura-emisor-cabecera { line-height: 1.7; }
+.factura-emisor-cabecera { line-height: 1.7; padding-top: 0.2em; }
 .factura-meta-derecha { text-align: right; }
-.factura-numero-grande { font-size: 1.3em; font-weight: 700; margin-bottom: 0.3em; }
-.factura-fecha-gris { color: var(--texto-suave); }
-.factura-fecha-gris strong { color: var(--texto); font-weight: 600; }
-.factura-meta-derecha .etiqueta { margin-top: 0.5em; }
+.factura-titulo { font-size: 1.8em; font-weight: 700; margin-bottom: 0.5em; }
+.factura-meta-derecha .etiqueta { margin-top: 0.6em; }
 
-.factura-nota { margin: -8mm 0 8mm; font-size: 0.9em; color: var(--texto-suave); }
+.factura-mini-tabla {
+  margin-left: auto;
+  border-collapse: separate;
+  border-spacing: 0 3px;
+  font-size: 0.9em;
+}
+.factura-mini-tabla th, .factura-mini-tabla td { padding: 0.45em 1em; text-align: left; font-weight: 400; }
+.factura-mini-tabla th { background: var(--acento); color: #fff; font-weight: 600; }
+.factura-mini-tabla td { background: var(--fondo); color: var(--texto); }
 
-.factura-cliente { margin-bottom: 10mm; }
-.factura-cliente h4 { margin: 0 0 0.5em; font-size: 1em; font-weight: 700; }
-.factura-cliente p { margin: 0; line-height: 1.7; }
+.factura-nota { margin: 0 0 4mm; font-size: 0.9em; color: var(--texto-suave); }
 
-.factura-lineas { margin-bottom: 2em; }
-.factura-lineas thead th { padding-bottom: 0.6em; border-bottom: 1px solid var(--borde); font-weight: 700; color: var(--texto); }
-.factura-lineas td { padding: 0.9em 0.6em 0.9em 0; border-bottom: 1px solid var(--borde); color: var(--texto-suave); }
-.factura-lineas td:first-child { padding-left: 0; }
+.factura-cliente-caja {
+  width: 65%;
+  margin: 0 0 10mm auto;
+  background: var(--fondo);
+  border-radius: 6px;
+  padding: 1em 1.25em;
+  line-height: 1.7;
+}
+
+.factura-lineas { margin-bottom: 2em; border-collapse: collapse; }
+.factura-lineas thead th {
+  background: var(--acento);
+  color: #fff;
+  padding: 0.7em 0.8em;
+  font-weight: 600;
+}
+.factura-lineas thead th:first-child { border-top-left-radius: 6px; border-bottom-left-radius: 6px; }
+.factura-lineas thead th:last-child { border-top-right-radius: 6px; border-bottom-right-radius: 6px; }
+.factura-lineas td { padding: 0.8em; border-bottom: 1px solid var(--borde); color: var(--texto-suave); }
+.factura-lineas tbody tr:nth-child(even) { background: var(--fondo); }
 
 .totales-caja {
   display: flex;
   justify-content: flex-end;
   margin-bottom: 2em;
 }
-.factura-doc .totales { width: 20em; border: 1px solid var(--borde); }
+.factura-doc .totales { width: 18em; }
 .factura-doc .totales .linea-total {
   display: flex;
   justify-content: space-between;
   gap: 1em;
-  padding: 0.7em 1em;
+  padding: 0.3em 0;
   white-space: nowrap;
   color: var(--texto-suave);
-  border-bottom: 1px solid var(--borde);
 }
 .factura-doc .totales .linea-total.gran-total {
   font-weight: 700;
-  font-size: 1.1em;
-  color: var(--texto);
-  border-bottom: none;
+  font-size: 1.2em;
+  color: var(--acento);
+  border-top: 2px solid var(--acento);
+  margin-top: 0.5em;
+  padding-top: 0.6em;
 }
 
-.factura-pie {
-  margin-top: 4em;
-  font-size: 0.85em;
-  color: var(--texto-suave);
-  line-height: 1.6;
-}
+.factura-pago { margin-top: 3em; border-radius: 6px; overflow: hidden; }
+.factura-pago-titulo { background: var(--acento); color: #fff; font-weight: 700; padding: 0.6em 1em; }
+.factura-pago-valor { background: var(--fondo); padding: 0.8em 1em; font-family: var(--fuente-num); }
 
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }

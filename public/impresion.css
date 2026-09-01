@@ -1,7 +1,8 @@
 /* Vista de impresion de una factura. Solo se aplica dentro de @media print,
    sobre la misma interfaz: no hay pagina HTML separada (encargo §5/§9).
-   El diseño elegido es en blanco y negro, así que aquí no hace falta
-   conservar color: solo ajustar que la estructura encaje en la hoja. */
+   El diseño usa color de cabecera de tabla y caja de pago, así que se
+   conserva con print-color-adjust (el PDF de "Guardar como PDF" pasa
+   por aquí también). */
 @media print {
   @page { size: A4; margin: 20mm; }
 

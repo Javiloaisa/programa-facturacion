@@ -479,22 +479,22 @@ function renderDetalleFactura(f) {
             ${emisor.telefono ? `<br>${esc(emisor.telefono)}` : ''}
           </div>
           <div class="factura-meta-derecha">
-            <div class="factura-numero-grande">Factura ${esc(f.numero || 'Borrador')}</div>
-            <div class="factura-fecha-gris">Fecha: <strong>${fmtFecha(f.fecha)}</strong></div>
-            <div class="factura-fecha-gris">Vencimiento: <strong>${fmtFecha(f.fechaVencimiento)}</strong></div>
+            <div class="factura-titulo">Factura</div>
+            <table class="factura-mini-tabla">
+              <tr><th>Número</th><td>${esc(f.numero || 'Borrador')}</td></tr>
+              <tr><th>Fecha</th><td>${fmtFecha(f.fecha)}</td></tr>
+              <tr><th>Vencimiento</th><td>${fmtFecha(f.fechaVencimiento)}</td></tr>
+            </table>
             ${f.cobrada ? `<span class="etiqueta cobrada">Cobrada el ${fmtFecha(f.fechaCobro)}</span>` : (f.estado === 'confirmada' ? '<span class="etiqueta pendiente">Pendiente de cobro</span>' : '')}
           </div>
         </div>
         ${f.rectificaA ? `<p class="factura-nota">Rectifica a la factura ${esc(f.rectificaA)}</p>` : ''}
 
-        <div class="factura-cliente">
-          <h4>Datos cliente</h4>
-          <p>
-            ${esc(f.clienteSnapshot?.nombre || '')}<br>
-            ${esc(f.clienteSnapshot?.direccion || '')}<br>
-            ${esc(f.clienteSnapshot?.cp || '')} ${esc(f.clienteSnapshot?.poblacion || '')}${f.clienteSnapshot?.provincia ? ` (${esc(f.clienteSnapshot.provincia)})` : ''}<br>
-            NIF ${esc(f.clienteSnapshot?.nif || '')}
-          </p>
+        <div class="factura-cliente-caja">
+          ${esc(f.clienteSnapshot?.nombre || '')}<br>
+          ${esc(f.clienteSnapshot?.direccion || '')}<br>
+          ${esc(f.clienteSnapshot?.cp || '')} ${esc(f.clienteSnapshot?.poblacion || '')}${f.clienteSnapshot?.provincia ? ` (${esc(f.clienteSnapshot.provincia)})` : ''}<br>
+          NIF ${esc(f.clienteSnapshot?.nif || '')}
         </div>
 
         <table class="factura-lineas">
@@ -513,7 +513,11 @@ function renderDetalleFactura(f) {
           </div>
         </div>
 
-        ${emisor.iban ? `<footer class="factura-pie">El pago se realizará por transferencia bancaria a ${esc(emisor.iban)}.</footer>` : ''}
+        ${emisor.iban ? `
+        <div class="factura-pago">
+          <div class="factura-pago-titulo">Cuenta de pago</div>
+          <div class="factura-pago-valor">${esc(emisor.iban)}</div>
+        </div>` : ''}
       </div>
     </article>
   `;
