@@ -393,7 +393,10 @@ function renderFormularioFactura(factura) {
       actualizarPreview();
     }
   });
-  $contenido.addEventListener('input', actualizarPreview);
+  // Escuchar en el <form>, no en $contenido: $contenido persiste entre
+  // renders (solo se reemplaza su innerHTML), así que volver a esta ruta
+  // varias veces iría acumulando un listener por visita.
+  document.getElementById('form-factura').addEventListener('input', actualizarPreview);
 
   async function actualizarPreview() {
     try {
@@ -552,7 +555,7 @@ ruta('/clientes', async () => {
         <button type="submit" class="primario">Guardar cliente</button>
       </form>
     </div>
-    ${clientes.length === 0 ? '<div class="estado-vacio">Todavía no hay clientes.</div>' : `
+    ${clientes.length === 0 ? '<div class="estado-vacio">Todavía no hay clientes. Da de alta el primero con el formulario de arriba.</div>' : `
     <div class="tabla-envoltorio"><table>
       <thead><tr><th>Nombre</th><th>NIF</th><th>Población</th><th class="num">Total ${anioActual()}</th><th></th></tr></thead>
       <tbody>
@@ -702,7 +705,7 @@ ruta('/inversiones', async () => {
       <div class="espaciador"></div>
       <button type="button" class="primario" id="btn-nuevo-bien">Nuevo bien (n)</button>
     </div>
-    ${bienes.length === 0 ? '<div class="estado-vacio">Todavía no hay bienes de inversión dados de alta.</div>' : `
+    ${bienes.length === 0 ? '<div class="estado-vacio">Todavía no hay bienes de inversión. Da de alta el primero con «Nuevo bien».</div>' : `
     <div class="tabla-envoltorio"><table>
       <thead><tr><th>Fecha</th><th>Descripción</th><th>Categoría</th><th class="num">Base</th><th class="num">Coef. %</th><th class="num">Amort. ${anio}</th><th class="num">Pendiente</th></tr></thead>
       <tbody>

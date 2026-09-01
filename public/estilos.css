@@ -51,7 +51,6 @@ button.primario {
   color: #fff;
 }
 button.primario:hover { background: #163d54; }
-button.peligro { color: var(--rojo); border-color: var(--rojo); }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 :focus-visible {
@@ -159,7 +158,11 @@ td.num input { text-align: right; }
 .etiqueta.borrador { background: var(--acento-suave); color: var(--acento); }
 .etiqueta.confirmada { background: #e6f0e8; color: var(--verde); }
 .etiqueta.cobrada { background: #e6f0e8; color: var(--verde); }
-.etiqueta.pendiente { background: var(--rojo-suave); color: var(--rojo); }
+/* Ni "pendiente de cobro" ni el aviso del modelo 347 son "a ingresar" ni
+   una cadena de huellas rota: el rojo se reserva para esos dos casos
+   (encargo §9), así que aquí solo un tono neutro que llama la atención
+   sin sumar un segundo color de acento. */
+.etiqueta.pendiente { background: var(--fondo); color: var(--texto-suave); border: 1px solid var(--borde); }
 
 /* --- Casillas de impuestos --------------------------------------------- */
 

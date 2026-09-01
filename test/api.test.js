@@ -249,6 +249,30 @@ describe('API — flujo principal', () => {
     assert.equal(despues.body.length, antes.body.length);
   });
 
+  test('el snapshot del cliente se congela al confirmar, no al crear el borrador (encargo §3/§4)', async () => {
+    await cliente.peticion('POST', '/api/clientes/c-snap', { nombre: 'Cliente Snapshot', nif: '00000000T', direccion: 'Dirección vieja' });
+
+    // Fecha en el 4T para no alterar los totales del 3T 2026 que comprueba
+    // el test del modelo 303/130 más abajo.
+    const borrador = await cliente.peticion('POST', '/api/facturas', {
+      clienteId: 'c-snap', fecha: '2026-12-01', lineas: [{ concepto: 'x', cantidad: 1, precio: 10 }],
+    });
+    assert.equal(borrador.body.clienteSnapshot.direccion, 'Dirección vieja');
+
+    // Cambiar la dirección del cliente mientras el borrador sigue abierto.
+    await cliente.peticion('PUT', '/api/clientes/c-snap', { nombre: 'Cliente Snapshot', nif: '00000000T', direccion: 'Dirección al confirmar' });
+
+    const confirmada = await cliente.peticion('POST', `/api/facturas/${borrador.body.id}/confirmar`, null);
+    assert.equal(confirmada.status, 200);
+    assert.equal(confirmada.body.clienteSnapshot.direccion, 'Dirección al confirmar', 'debe llevar la dirección vigente en el momento de emitir, no la de cuando se creó el borrador');
+
+    // Cambiar la dirección otra vez, ya con la factura confirmada: no debe alterarla (regla §4.4).
+    await cliente.peticion('PUT', '/api/clientes/c-snap', { nombre: 'Cliente Snapshot', nif: '00000000T', direccion: 'Dirección después de emitida' });
+    const facturas = await cliente.peticion('GET', '/api/facturas');
+    const persistida = facturas.body.find((f) => f.id === borrador.body.id);
+    assert.equal(persistida.clienteSnapshot.direccion, 'Dirección al confirmar', 'una factura emitida no puede cambiar aunque cambie el cliente');
+  });
+
   test('gastos: la respuesta incluye el desglose IRPF/IVA', async () => {
     const r = await cliente.peticion('POST', '/api/gastos', {
       fecha: '2026-08-05',

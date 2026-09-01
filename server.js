@@ -436,6 +436,12 @@ function registrarRutas(router, { store, estado, revisarIntegridad }) {
 
   router.post('/api/facturas/:id/confirmar', async (req, res, ctx, { id }) => {
     exigirEscritura();
+    // El snapshot del cliente se congela "en el momento de emitir" (encargo
+    // §3): un borrador puede llevar tiempo abierto, así que se refresca
+    // aquí con los datos actuales del cliente, no con los que tenía cuando
+    // se creó el borrador. A partir de aquí ya no cambia nunca (regla §4.4).
+    const clientesActuales = await store.leer('clientes');
+
     let facturaConfirmada = null;
     await store.actualizar('facturas', async (facturas) => {
       const idx = facturas.findIndex((f) => f.id === id);
@@ -443,6 +449,8 @@ function registrarRutas(router, { store, estado, revisarIntegridad }) {
       const actual = facturas[idx];
       if (actual.estado !== 'borrador') throw new ErrorHttp(409, 'Esta factura ya está confirmada.');
       validarLineas(actual.lineas);
+      const clienteActual = clientesActuales.find((c) => c.id === actual.clienteId);
+      const clienteSnapshot = clienteActual ? { ...clienteActual } : actual.clienteSnapshot;
 
       await store.actualizar('config', (config) => {
         const esRectificativa = actual.tipo === 'R1';
@@ -457,6 +465,7 @@ function registrarRutas(router, { store, estado, revisarIntegridad }) {
 
         const candidata = {
           ...actual,
+          clienteSnapshot,
           estado: 'confirmada',
           serie: serieUsar,
           numero: `${serieUsar}-${pad4(numeroActual)}`,
