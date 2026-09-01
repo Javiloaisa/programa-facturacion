@@ -468,56 +468,64 @@ function renderDetalleFactura(f) {
       <button id="btn-imprimir" class="primario">Imprimir</button>
     </div>
     <article class="factura-doc">
-      <header class="factura-cabecera">
+      <div class="factura-banda">
         <div>
           <div class="factura-etiqueta">Factura</div>
           <div class="factura-numero">${esc(f.numero || 'Borrador')}</div>
         </div>
-        <div class="factura-meta texto-derecha">
-          <div>Fecha de emisión: <strong>${fmtFecha(f.fecha)}</strong></div>
-          <div>Vencimiento: <strong>${fmtFecha(f.fechaVencimiento)}</strong></div>
-          ${f.rectificaA ? `<div>Rectifica a la factura ${esc(f.rectificaA)}</div>` : ''}
-          <div>${f.cobrada ? `<span class="etiqueta cobrada">Cobrada el ${fmtFecha(f.fechaCobro)}</span>` : (f.estado === 'confirmada' ? '<span class="etiqueta pendiente">Pendiente de cobro</span>' : '')}</div>
-        </div>
-      </header>
-
-      <div class="factura-partes">
-        <div class="parte">
-          <h4>Emisor</h4>
-          <p>
-            <strong>${esc(emisor.nombre || '')}</strong><br>
-            NIF ${esc(emisor.nif || '')}<br>
-            ${esc(emisor.direccion || '')}<br>
-            ${esc(emisor.cp || '')} ${esc(emisor.poblacion || '')}${emisor.provincia ? ` (${esc(emisor.provincia)})` : ''}
-            ${emisor.email ? `<br>${esc(emisor.email)}` : ''}
-          </p>
-        </div>
-        <div class="parte">
-          <h4>Cliente</h4>
-          <p>
-            <strong>${esc(f.clienteSnapshot?.nombre || '')}</strong><br>
-            NIF ${esc(f.clienteSnapshot?.nif || '')}<br>
-            ${esc(f.clienteSnapshot?.direccion || '')}<br>
-            ${esc(f.clienteSnapshot?.cp || '')} ${esc(f.clienteSnapshot?.poblacion || '')}${f.clienteSnapshot?.provincia ? ` (${esc(f.clienteSnapshot.provincia)})` : ''}
-          </p>
+        <div class="factura-fechas">
+          <div>Emisión <strong>${fmtFecha(f.fecha)}</strong></div>
+          <div>Vencimiento <strong>${fmtFecha(f.fechaVencimiento)}</strong></div>
         </div>
       </div>
 
-      <table class="factura-lineas">
-        <thead><tr><th>Concepto</th><th class="num">Cantidad</th><th class="num">Precio</th><th class="num">Importe</th></tr></thead>
-        <tbody>
-          ${f.lineas.map((l) => `<tr><td>${esc(l.concepto)}</td><td class="num">${l.cantidad}</td><td class="num">${fmtEUR(l.precio)}</td><td class="num">${fmtEUR(l.cantidad * l.precio)}</td></tr>`).join('')}
-        </tbody>
-      </table>
+      <div class="factura-cuerpo">
+        ${f.rectificaA || f.estado === 'confirmada' ? `
+        <div class="factura-estado">
+          ${f.rectificaA ? `<span>Rectifica a la factura ${esc(f.rectificaA)}</span>` : '<span></span>'}
+          ${f.cobrada ? `<span class="etiqueta cobrada">Cobrada el ${fmtFecha(f.fechaCobro)}</span>` : (f.estado === 'confirmada' ? '<span class="etiqueta pendiente">Pendiente de cobro</span>' : '')}
+        </div>` : ''}
 
-      <div class="totales">
-        <div class="linea-total">Base <span>${fmtEUR(f.base)}</span></div>
-        <div class="linea-total">IVA (${f.tipoIva}%) <span>${fmtEUR(f.cuotaIva)}</span></div>
-        <div class="linea-total">Retención IRPF (-${f.tipoIrpf}%) <span>-${fmtEUR(f.cuotaIrpf)}</span></div>
-        <div class="linea-total gran-total">Total <span>${fmtEUR(f.total)}</span></div>
+        <div class="factura-partes">
+          <div class="parte">
+            <h4>Emisor</h4>
+            <p>
+              <strong>${esc(emisor.nombre || '')}</strong><br>
+              NIF ${esc(emisor.nif || '')}<br>
+              ${esc(emisor.direccion || '')}<br>
+              ${esc(emisor.cp || '')} ${esc(emisor.poblacion || '')}${emisor.provincia ? ` (${esc(emisor.provincia)})` : ''}
+              ${emisor.email ? `<br>${esc(emisor.email)}` : ''}
+            </p>
+          </div>
+          <div class="parte">
+            <h4>Cliente</h4>
+            <p>
+              <strong>${esc(f.clienteSnapshot?.nombre || '')}</strong><br>
+              NIF ${esc(f.clienteSnapshot?.nif || '')}<br>
+              ${esc(f.clienteSnapshot?.direccion || '')}<br>
+              ${esc(f.clienteSnapshot?.cp || '')} ${esc(f.clienteSnapshot?.poblacion || '')}${f.clienteSnapshot?.provincia ? ` (${esc(f.clienteSnapshot.provincia)})` : ''}
+            </p>
+          </div>
+        </div>
+
+        <table class="factura-lineas">
+          <thead><tr><th>Concepto</th><th class="num">Cantidad</th><th class="num">Precio</th><th class="num">Importe</th></tr></thead>
+          <tbody>
+            ${f.lineas.map((l) => `<tr><td>${esc(l.concepto)}</td><td class="num">${l.cantidad}</td><td class="num">${fmtEUR(l.precio)}</td><td class="num">${fmtEUR(l.cantidad * l.precio)}</td></tr>`).join('')}
+          </tbody>
+        </table>
+
+        <div class="totales-caja">
+          <div class="totales">
+            <div class="linea-total">Base <span>${fmtEUR(f.base)}</span></div>
+            <div class="linea-total">IVA (${f.tipoIva}%) <span>${fmtEUR(f.cuotaIva)}</span></div>
+            <div class="linea-total">Retención IRPF (-${f.tipoIrpf}%) <span>-${fmtEUR(f.cuotaIrpf)}</span></div>
+            <div class="linea-total gran-total">Total <span>${fmtEUR(f.total)}</span></div>
+          </div>
+        </div>
+
+        ${emisor.iban ? `<footer class="factura-pie">Forma de pago: transferencia bancaria a ${esc(emisor.iban)}</footer>` : ''}
       </div>
-
-      ${emisor.iban ? `<footer class="factura-pie">Forma de pago: transferencia bancaria a ${esc(emisor.iban)}</footer>` : ''}
     </article>
   `;
   document.getElementById('btn-imprimir').addEventListener('click', () => window.print());
