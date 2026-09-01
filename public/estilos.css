@@ -211,7 +211,6 @@ details.avanzado summary { cursor: pointer; font-weight: 600; padding: 0.4em 0; 
 .factura-emisor-cabecera { line-height: 1.7; padding-top: 0.2em; }
 .factura-meta-derecha { text-align: right; }
 .factura-titulo { font-size: 1.8em; font-weight: 700; margin-bottom: 0.5em; }
-.factura-meta-derecha .etiqueta { margin-top: 0.6em; }
 
 .factura-mini-tabla {
   margin-left: auto;
