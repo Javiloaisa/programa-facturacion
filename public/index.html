@@ -1,0 +1,35 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Facturación</title>
+<link rel="stylesheet" href="/estilos.css">
+<link rel="stylesheet" href="/impresion.css" media="print">
+
+<form id="vista-login" hidden>
+  <h1>Facturación</h1>
+  <div class="campo">
+    <label for="login-password">Contraseña</label>
+    <input id="login-password" type="password" autocomplete="current-password" required>
+  </div>
+  <p class="error" id="login-error" role="alert"></p>
+  <button type="submit" class="primario">Entrar</button>
+</form>
+
+<div id="app" hidden>
+  <nav id="nav-lateral" aria-label="Navegación principal">
+    <h1>Facturación</h1>
+    <a href="#/facturas" data-seccion="facturas">Facturas</a>
+    <a href="#/gastos" data-seccion="gastos">Gastos</a>
+    <a href="#/inversiones" data-seccion="inversiones">Inversiones</a>
+    <a href="#/libros" data-seccion="libros">Libros</a>
+    <a href="#/impuestos" data-seccion="impuestos">Impuestos</a>
+    <a href="#/ajustes" data-seccion="ajustes">Ajustes</a>
+    <div class="espaciador"></div>
+    <button id="boton-salir" type="button">Salir</button>
+  </nav>
+  <div id="columna-principal">
+    <div id="aviso-solo-lectura" hidden></div>
+    <main id="contenido" tabindex="-1"></main>
+  </div>
+</div>
+
+<script type="module" src="/app.js"></script>

@@ -1,0 +1,202 @@
+/* Paleta sobria de documento administrativo. Un único color de acento;
+   rojo reservado para "a ingresar" y para la cadena de huellas rota. */
+:root {
+  --fondo: #f4f4f2;
+  --superficie: #ffffff;
+  --borde: #d8d8d4;
+  --texto: #1c1c1a;
+  --texto-suave: #5a5a55;
+  --acento: #1d4e6b;
+  --acento-suave: #e5edf1;
+  --rojo: #8c2b1f;
+  --rojo-suave: #f6e6e3;
+  --verde: #2b6b3a;
+  --radio: 3px;
+  --fuente: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --fuente-num: "Consolas", "SFMono-Regular", Menlo, Monaco, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: var(--fuente);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+body { display: flex; min-height: 100vh; }
+
+[hidden] { display: none !important; }
+
+a { color: var(--acento); }
+
+button, input, select, textarea { font: inherit; color: inherit; }
+
+button {
+  cursor: pointer;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 0.4em 0.8em;
+}
+button:hover { background: var(--acento-suave); }
+button.primario {
+  background: var(--acento);
+  border-color: var(--acento);
+  color: #fff;
+}
+button.primario:hover { background: #163d54; }
+button.peligro { color: var(--rojo); border-color: var(--rojo); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 1px;
+}
+
+input, select, textarea {
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 0.35em 0.5em;
+  background: var(--superficie);
+  width: 100%;
+}
+
+label { display: block; font-size: 0.85em; color: var(--texto-suave); margin-bottom: 0.2em; }
+.campo { margin-bottom: 0.75em; }
+.fila-campos { display: flex; gap: 0.75em; flex-wrap: wrap; }
+.fila-campos > .campo { flex: 1; min-width: 10em; }
+
+/* --- Login -------------------------------------------------------- */
+
+#vista-login {
+  margin: auto;
+  width: 100%;
+  max-width: 22em;
+  padding: 2em;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+}
+#vista-login h1 { font-size: 1.1em; margin-top: 0; }
+#vista-login .error { color: var(--rojo); font-size: 0.9em; min-height: 1.2em; }
+
+/* --- Layout de la app ----------------------------------------------- */
+
+#app { display: flex; width: 100%; min-height: 100vh; }
+#columna-principal { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+nav#nav-lateral {
+  width: 14em;
+  flex-shrink: 0;
+  background: var(--superficie);
+  border-right: 1px solid var(--borde);
+  padding: 1em 0;
+  display: flex;
+  flex-direction: column;
+}
+nav#nav-lateral h1 { font-size: 1em; padding: 0 1em; margin: 0 0 1em; }
+nav#nav-lateral a {
+  display: block;
+  padding: 0.6em 1em;
+  text-decoration: none;
+  color: var(--texto);
+  border-left: 3px solid transparent;
+}
+nav#nav-lateral a:hover { background: var(--acento-suave); }
+nav#nav-lateral a.activo { border-left-color: var(--acento); background: var(--acento-suave); font-weight: 600; }
+nav#nav-lateral .espaciador { flex: 1; }
+nav#nav-lateral button { margin: 0 1em; }
+
+#aviso-solo-lectura {
+  background: var(--rojo-suave);
+  color: var(--rojo);
+  padding: 0.6em 1em;
+  font-weight: 600;
+  border-bottom: 1px solid var(--rojo);
+}
+
+main#contenido { flex: 1; padding: 1.5em; max-width: 70em; }
+main#contenido h2 { margin-top: 0; }
+
+.barra-acciones { display: flex; gap: 0.5em; align-items: center; margin-bottom: 1em; flex-wrap: wrap; }
+.barra-acciones .espaciador { flex: 1; }
+
+.mensaje-error { color: var(--rojo); margin: 0.5em 0; }
+.mensaje-info { color: var(--texto-suave); margin: 0.5em 0; }
+
+.estado-vacio {
+  padding: 2em;
+  text-align: center;
+  color: var(--texto-suave);
+  border: 1px dashed var(--borde);
+  border-radius: var(--radio);
+}
+
+/* --- Tablas densas ---------------------------------------------------- */
+
+table { width: 100%; border-collapse: collapse; background: var(--superficie); }
+th, td { padding: 0.4em 0.6em; border-bottom: 1px solid var(--borde); text-align: left; }
+th { font-size: 0.8em; text-transform: uppercase; color: var(--texto-suave); font-weight: 600; }
+tbody tr:hover { background: var(--acento-suave); }
+td.num, th.num { text-align: right; font-family: var(--fuente-num); font-variant-numeric: tabular-nums; }
+td.num input { text-align: right; }
+.tabla-envoltorio { overflow-x: auto; }
+
+/* Utilidades puntuales, para no depender de atributos style="" (CSP sin
+   unsafe-inline: los estilos en línea se bloquean, no solo <style>). */
+.filtro-linea { margin: 0; }
+.campo-estrecho { max-width: 8em; }
+.campo-final { align-self: end; }
+.texto-derecha { text-align: right; }
+
+.etiqueta { display: inline-block; padding: 0.1em 0.5em; border-radius: var(--radio); font-size: 0.8em; }
+.etiqueta.borrador { background: var(--acento-suave); color: var(--acento); }
+.etiqueta.confirmada { background: #e6f0e8; color: var(--verde); }
+.etiqueta.cobrada { background: #e6f0e8; color: var(--verde); }
+.etiqueta.pendiente { background: var(--rojo-suave); color: var(--rojo); }
+
+/* --- Casillas de impuestos --------------------------------------------- */
+
+.casilla { display: flex; justify-content: space-between; padding: 0.35em 0.6em; border-bottom: 1px solid var(--borde); }
+.casilla .num-casilla { color: var(--texto-suave); font-size: 0.85em; width: 3em; }
+.casilla .valor { font-family: var(--fuente-num); font-variant-numeric: tabular-nums; }
+.casilla .valor.a-ingresar { color: var(--rojo); font-weight: 600; }
+
+.bloque {
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 1em;
+  margin-bottom: 1em;
+}
+.bloque h3 { margin-top: 0; }
+
+details.avanzado { margin-top: 1em; }
+details.avanzado summary { cursor: pointer; font-weight: 600; padding: 0.4em 0; }
+
+/* --- Factura: vista de detalle / impresion ------------------------------ */
+
+.factura-doc { background: var(--superficie); border: 1px solid var(--borde); padding: 2em; max-width: 48em; }
+.factura-doc header { display: flex; justify-content: space-between; margin-bottom: 2em; }
+.factura-doc .totales { margin-left: auto; width: 16em; }
+.factura-doc .totales .linea-total { display: flex; justify-content: space-between; padding: 0.2em 0; }
+.factura-doc .totales .linea-total.gran-total { font-weight: 700; border-top: 1px solid var(--borde); margin-top: 0.3em; padding-top: 0.4em; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
+@media (max-width: 60em) {
+  body { flex-direction: column; }
+  nav#nav-lateral { width: 100%; flex-direction: row; overflow-x: auto; padding: 0.5em; }
+  nav#nav-lateral h1, nav#nav-lateral .espaciador { display: none; }
+  nav#nav-lateral a { border-left: none; border-bottom: 3px solid transparent; white-space: nowrap; }
+  nav#nav-lateral a.activo { border-bottom-color: var(--acento); }
+  main#contenido { padding: 1em; }
+}

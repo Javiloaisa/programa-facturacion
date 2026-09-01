@@ -1,0 +1,29 @@
+/* Vista de impresion de una factura. Solo se aplica dentro de @media print,
+   sobre la misma interfaz: no hay pagina HTML separada (encargo §5/§9). */
+@media print {
+  @page { size: A4; margin: 20mm; }
+
+  nav#nav-lateral,
+  #aviso-solo-lectura,
+  .barra-acciones,
+  .no-imprimir {
+    display: none !important;
+  }
+
+  body, #app { display: block; background: #fff; }
+  main#contenido { padding: 0; max-width: none; }
+
+  .factura-doc {
+    border: none;
+    padding: 0;
+    max-width: none;
+    box-shadow: none;
+  }
+
+  * {
+    color: #000 !important;
+    background: #fff !important;
+  }
+
+  table { page-break-inside: avoid; }
+}

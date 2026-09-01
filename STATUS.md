@@ -41,17 +41,40 @@ encargo original está en [encargo-facturacion.md](encargo-facturacion.md).
       incluida la prueba obligatoria de 100 altas de factura concurrentes
       sin huecos ni duplicados, el rate limiting de login (429 tras 5
       fallos), y el modo solo lectura al corromper a mano una huella.
+- [x] Frontend (`public/index.html`, `public/app.js`, `public/estilos.css`,
+      `public/impresion.css`) — SPA de una sola página con enrutado por
+      hash hecho a mano, sin build, sin `localStorage`/`sessionStorage`.
+      Login como estado de la propia SPA (formulario visible cuando
+      `GET /api/sesion` da 401). Secciones Facturas (con gestión de
+      clientes colgando de Facturas, sin entrada propia en la nav, tal
+      como pide el encargo §9), Gastos, Inversiones, Libros, Impuestos
+      (casilla junto a cada importe, rojo solo en "a ingresar"), Ajustes
+      (avanzado plegado, exportar/importar). CSP sin `unsafe-inline`
+      respetada: nada de `style=""` ni `onclick=""` en el HTML.
+      Verificado end to end con Playwright headless (login, alta de
+      cliente, factura completa borrador→confirmar con numeración e
+      importes reales calculados en servidor, gasto de suministros de
+      vivienda con el desglose correcto, bien de inversión con la
+      amortización de encargo §10, impuestos 303/130, vista de
+      impresión con `@media print` comprobada por computed style, atajos
+      de teclado "n" y Escape). Dos bugs reales encontrados y corregidos
+      en esa verificación: (1) `location.hash` no dispara `hashchange`
+      cuando se asigna el mismo valor que ya tenía — pasaba al confirmar
+      una factura o al editar un borrador existente, así que ahora esas
+      acciones usan un helper `irA()` que fuerza el re-render a mano
+      cuando el hash no cambia; (2) la ruta por defecto (hash vacío) solo
+      se resolvía en una variable local sin escribir `#/facturas` de
+      vuelta en `location.hash`, así que los atajos de teclado que miran
+      la sección activa vía `location.hash` no funcionaban nada más
+      entrar. `npm test` sigue en 40/40 tras estos cambios (no tocan el
+      backend).
 
 ## Pendiente (en este orden, según PLAN.md → "Orden de implementación")
 
-1. Frontend (`public/index.html`, `public/app.js`, `public/estilos.css`,
-   `public/impresion.css`) — SPA de una sola página, sin build, sin
-   `localStorage`. Login como estado de la propia SPA, impresión vía
-   `@media print` en `impresion.css` (NO páginas separadas).
-2. `deploy/` (systemd + Tailscale) y `README.md` raíz (incluye qué falta
+1. `deploy/` (systemd + Tailscale) y `README.md` raíz (incluye qué falta
    para VeriFactu completo y el aviso del modelo 347, ambos fuera de
    alcance según encargo §11).
-3. Repaso final contra el encargo: reglas de negocio innegociables (§4),
+2. Repaso final contra el encargo: reglas de negocio innegociables (§4),
    autenticación (§7), diseño de interfaz (§9).
 
 ## Decisiones ya cerradas (no volver a discutir, ver PLAN.md para el porqué)
@@ -68,8 +91,8 @@ encargo original está en [encargo-facturacion.md](encargo-facturacion.md).
 
 ## Cómo continuar
 
-Retomar por el punto 1 de "Pendiente" (frontend en `public/`), siguiendo el
-orden de implementación de `PLAN.md`. El backend completo ya existe y está
-probado (`npm test` → 40/40 en verde); el frontend solo necesita consumir
-las rutas ya descritas en PLAN.md → "Rutas API". No hace falta releer el
-encargo completo: `PLAN.md` ya resume todas las decisiones necesarias.
+Retomar por el punto 1 de "Pendiente" (`deploy/` + `README.md` raíz),
+siguiendo el orden de implementación de `PLAN.md`. Backend y frontend ya
+existen, están probados (`npm test` → 40/40) y verificados a mano en
+navegador. No hace falta releer el encargo completo: `PLAN.md` ya resume
+todas las decisiones necesarias.
