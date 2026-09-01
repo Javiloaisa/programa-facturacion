@@ -1,0 +1,17 @@
+[Unit]
+Description=Copia de seguridad diaria de facturacion
+After=network.target
+
+[Service]
+Type=oneshot
+User=facturacion
+Group=facturacion
+WorkingDirectory=/opt/facturacion
+Environment=FACTURACION_DATA=/var/lib/facturacion
+ExecStart=/usr/bin/node /opt/facturacion/server.js --backup
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/facturacion

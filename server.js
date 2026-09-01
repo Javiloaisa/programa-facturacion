@@ -795,6 +795,20 @@ async function arrancarCLI() {
     return;
   }
 
+  if (process.argv.includes('--backup')) {
+    const dataDir = process.env.FACTURACION_DATA || '/var/lib/facturacion';
+    try {
+      const store = new Store(dataDir);
+      const { fichero } = await store.backup();
+      console.log(`Copia de seguridad creada: ${fichero}`);
+      process.exit(0);
+    } catch (err) {
+      console.error(`Error al hacer la copia de seguridad: ${err.message}`);
+      process.exit(1);
+    }
+    return;
+  }
+
   if (!auth.existeAuth(authFile)) {
     console.error(
       `No existe el fichero de credenciales (${authFile}). Ejecuta primero: node server.js --set-password`

@@ -1,0 +1,33 @@
+[Unit]
+Description=Aplicacion de facturacion (autonomo)
+After=network.target
+
+[Service]
+Type=simple
+User=facturacion
+Group=facturacion
+WorkingDirectory=/opt/facturacion
+Environment=PORT=8080
+Environment=HOST=127.0.0.1
+Environment=FACTURACION_DATA=/var/lib/facturacion
+Environment=FACTURACION_AUTH_FILE=/opt/facturacion/auth.json
+ExecStart=/usr/bin/node /opt/facturacion/server.js
+Restart=always
+RestartSec=5
+
+# Endurecido: el proceso no necesita nada fuera de su directorio de datos.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/facturacion
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+
+[Install]
+WantedBy=multi-user.target

@@ -69,13 +69,29 @@ encargo original está en [encargo-facturacion.md](encargo-facturacion.md).
       entrar. `npm test` sigue en 40/40 tras estos cambios (no tocan el
       backend).
 
+- [x] `deploy/` — `facturacion.service` (endurecido, usuario dedicado sin
+      shell) y `backup.service`/`backup.timer` (diario 03:00, usan el
+      nuevo `node server.js --backup`, que llama a `Store.backup()` y
+      conserva 30 copias), `instalar.sh` idempotente (no toca `auth.json`
+      ni los datos en reinstalaciones; no arranca el servicio si aún no
+      hay contraseña fijada, para no dejarlo en bucle de reintentos),
+      `README-despliegue.md` con cortafuegos + Tailscale (`serve --bg
+      8080`, sin TLS en Node) + comprobación de que el puerto no responde
+      desde la IP pública, y la nota final de la alternativa con dominio
+      + Caddy.
+- [x] `README.md` raíz — arranque en local, variables de entorno, mapa de
+      la estructura, backup manual, qué queda fuera de alcance a
+      propósito (VeriFactu completo con su fecha límite del 1/7/2027,
+      modelo 390, modelo 347 con el aviso ya implementado, facturación
+      intracomunitaria) y el aviso de verificar el mapeo de casillas
+      contra el formulario real.
+
 ## Pendiente (en este orden, según PLAN.md → "Orden de implementación")
 
-1. `deploy/` (systemd + Tailscale) y `README.md` raíz (incluye qué falta
-   para VeriFactu completo y el aviso del modelo 347, ambos fuera de
-   alcance según encargo §11).
-2. Repaso final contra el encargo: reglas de negocio innegociables (§4),
-   autenticación (§7), diseño de interfaz (§9).
+1. Repaso final contra el encargo: reglas de negocio innegociables (§4),
+   autenticación (§7), diseño de interfaz (§9). Es el único punto que
+   queda del plan original — conviene releer encargo-facturacion.md §4,
+   §7 y §9 junto con el código antes de darlo por cerrado.
 
 ## Decisiones ya cerradas (no volver a discutir, ver PLAN.md para el porqué)
 
@@ -91,8 +107,9 @@ encargo original está en [encargo-facturacion.md](encargo-facturacion.md).
 
 ## Cómo continuar
 
-Retomar por el punto 1 de "Pendiente" (`deploy/` + `README.md` raíz),
-siguiendo el orden de implementación de `PLAN.md`. Backend y frontend ya
-existen, están probados (`npm test` → 40/40) y verificados a mano en
-navegador. No hace falta releer el encargo completo: `PLAN.md` ya resume
-todas las decisiones necesarias.
+Solo queda el repaso final contra el encargo (reglas de negocio §4,
+autenticación §7, diseño de interfaz §9): todo lo demás del árbol de
+`encargo-facturacion.md` §12 ya existe, está probado (`npm test` → 40/40)
+y verificado a mano en navegador con Playwright. Tras ese repaso, el
+proyecto está listo para desplegar siguiendo
+`deploy/README-despliegue.md`.

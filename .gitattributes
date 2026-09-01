@@ -1,0 +1,4 @@
+# Este proyecto se despliega en Linux (VPS); forzar LF evita que git
+# convierta a CRLF en checkouts de Windows y rompa el shebang de
+# deploy/instalar.sh o los ficheros de unidad de systemd.
+* text=auto eol=lf
