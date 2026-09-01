@@ -202,21 +202,13 @@ details.avanzado summary { cursor: pointer; font-weight: 600; padding: 0.4em 0; 
 
 .factura-cuerpo { padding: 20mm; }
 
-.factura-cabecera {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 8mm;
-}
-.factura-emisor-cabecera { line-height: 1.7; padding-top: 0.2em; }
-.factura-meta-derecha { text-align: right; }
-.factura-titulo { font-size: 1.8em; font-weight: 700; margin-bottom: 0.5em; }
+.factura-titulo { font-size: 1.8em; font-weight: 700; color: var(--acento); margin-bottom: 0.6em; }
 
 .factura-mini-tabla {
-  margin-left: auto;
   border-collapse: separate;
   border-spacing: 0 3px;
   font-size: 0.9em;
+  margin-bottom: 10mm;
 }
 .factura-mini-tabla th, .factura-mini-tabla td { padding: 0.45em 1em; text-align: left; font-weight: 400; }
 .factura-mini-tabla th { background: var(--acento); color: #fff; font-weight: 600; }
@@ -224,14 +216,21 @@ details.avanzado summary { cursor: pointer; font-weight: 600; padding: 0.4em 0; 
 
 .factura-nota { margin: 0 0 4mm; font-size: 0.9em; color: var(--texto-suave); }
 
-.factura-cliente-caja {
-  width: 65%;
-  margin: 0 0 10mm auto;
-  background: var(--fondo);
-  border-radius: 6px;
-  padding: 1em 1.25em;
-  line-height: 1.7;
+.factura-partes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2em;
+  margin-bottom: 10mm;
 }
+.factura-partes h4 {
+  margin: 0 0 0.4em;
+  font-size: 1.1em;
+  font-weight: 700;
+  color: var(--acento);
+  padding-bottom: 0.4em;
+  border-bottom: 1px solid var(--acento);
+}
+.factura-partes p { margin: 0; line-height: 1.8; color: var(--texto-suave); }
 
 .factura-lineas { margin-bottom: 2em; border-collapse: collapse; }
 .factura-lineas thead th {

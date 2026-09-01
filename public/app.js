@@ -469,30 +469,32 @@ function renderDetalleFactura(f) {
     </div>
     <article class="factura-doc">
       <div class="factura-cuerpo">
-        <div class="factura-cabecera">
-          <div class="factura-emisor-cabecera">
-            <strong>${esc(emisor.nombre || '')}</strong><br>
-            ${esc(emisor.direccion || '')}<br>
-            ${esc(emisor.cp || '')} ${esc(emisor.poblacion || '')}${emisor.provincia ? ` (${esc(emisor.provincia)})` : ''}<br>
-            NIF ${esc(emisor.nif || '')}
-            ${emisor.email ? `<br>${esc(emisor.email)}` : ''}
-            ${emisor.telefono ? `<br>${esc(emisor.telefono)}` : ''}
-          </div>
-          <div class="factura-meta-derecha">
-            <div class="factura-titulo">Factura</div>
-            <table class="factura-mini-tabla">
-              <tr><th>Número</th><td>${esc(f.numero || 'Borrador')}</td></tr>
-              <tr><th>Fecha</th><td>${fmtFecha(f.fecha)}</td></tr>
-            </table>
-          </div>
-        </div>
+        <div class="factura-titulo">Factura</div>
+        <table class="factura-mini-tabla">
+          <tr><th>Número</th><td>${esc(f.numero || 'Borrador')}</td></tr>
+          <tr><th>Fecha</th><td>${fmtFecha(f.fecha)}</td></tr>
+        </table>
         ${f.rectificaA ? `<p class="factura-nota">Rectifica a la factura ${esc(f.rectificaA)}</p>` : ''}
 
-        <div class="factura-cliente-caja">
-          ${esc(f.clienteSnapshot?.nombre || '')}<br>
-          ${esc(f.clienteSnapshot?.direccion || '')}<br>
-          ${esc(f.clienteSnapshot?.cp || '')} ${esc(f.clienteSnapshot?.poblacion || '')}${f.clienteSnapshot?.provincia ? ` (${esc(f.clienteSnapshot.provincia)})` : ''}<br>
-          NIF ${esc(f.clienteSnapshot?.nif || '')}
+        <div class="factura-partes">
+          <div class="parte">
+            <h4>${esc(emisor.nombre || '')}</h4>
+            <p>
+              Dirección: ${esc(emisor.direccion || '')}<br>
+              NIF: ${esc(emisor.nif || '')}<br>
+              CP y ciudad: ${esc(emisor.cp || '')} ${esc(emisor.poblacion || '')}${emisor.provincia ? ` (${esc(emisor.provincia)})` : ''}
+              ${emisor.email ? `<br>Email: ${esc(emisor.email)}` : ''}
+              ${emisor.telefono ? `<br>Teléfono: ${esc(emisor.telefono)}` : ''}
+            </p>
+          </div>
+          <div class="parte">
+            <h4>${esc(f.clienteSnapshot?.nombre || '')}</h4>
+            <p>
+              Dirección: ${esc(f.clienteSnapshot?.direccion || '')}<br>
+              NIF: ${esc(f.clienteSnapshot?.nif || '')}<br>
+              CP y ciudad: ${esc(f.clienteSnapshot?.cp || '')} ${esc(f.clienteSnapshot?.poblacion || '')}${f.clienteSnapshot?.provincia ? ` (${esc(f.clienteSnapshot.provincia)})` : ''}
+            </p>
+          </div>
         </div>
 
         <table class="factura-lineas">
