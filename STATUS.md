@@ -86,12 +86,25 @@ encargo original está en [encargo-facturacion.md](encargo-facturacion.md).
       intracomunitaria) y el aviso de verificar el mapeo de casillas
       contra el formulario real.
 
-## Pendiente (en este orden, según PLAN.md → "Orden de implementación")
+- [x] Repaso final contra el encargo (§4, §7, §9). Se encontraron y
+      corrigieron 4 desviaciones reales: el snapshot del cliente se
+      tomaba al crear el borrador en vez de al confirmar (§4.4); el
+      rojo se usaba también fuera de "a ingresar"/cadena rota (§9); dos
+      estados vacíos no decían qué hacer (§9); y una fuga de listeners
+      en el formulario de factura (bug de calidad, no del encargo, pero
+      salió al revisar con Playwright). Todo con test o verificación en
+      navegador — ver el commit para el detalle. `npm test` → 41/41.
 
-1. Repaso final contra el encargo: reglas de negocio innegociables (§4),
-   autenticación (§7), diseño de interfaz (§9). Es el único punto que
-   queda del plan original — conviene releer encargo-facturacion.md §4,
-   §7 y §9 junto con el código antes de darlo por cerrado.
+## Pendiente
+
+Nada del árbol de PLAN.md/encargo §12 queda por hacer. Antes de dar el
+proyecto por terminado del todo: desplegar de verdad en el VPS siguiendo
+`deploy/README-despliegue.md` y probar a mano el ciclo completo ahí (el
+encargo lo pide explícitamente en su sección "Verificación" — login real,
+alta y confirmación de factura, forzar una rotura de cadena editando
+`facturas.json` a mano para comprobar el modo solo lectura en producción,
+etc.), algo que esta sesión no puede hacer por sí sola al no tener acceso
+al VPS real.
 
 ## Decisiones ya cerradas (no volver a discutir, ver PLAN.md para el porqué)
 
@@ -107,9 +120,8 @@ encargo original está en [encargo-facturacion.md](encargo-facturacion.md).
 
 ## Cómo continuar
 
-Solo queda el repaso final contra el encargo (reglas de negocio §4,
-autenticación §7, diseño de interfaz §9): todo lo demás del árbol de
-`encargo-facturacion.md` §12 ya existe, está probado (`npm test` → 40/40)
-y verificado a mano en navegador con Playwright. Tras ese repaso, el
-proyecto está listo para desplegar siguiendo
-`deploy/README-despliegue.md`.
+El código está completo y probado (`npm test` → 41/41, backend y frontend
+verificados a mano con Playwright). Lo único que queda es el despliegue
+real en el VPS de Hetzner siguiendo `deploy/README-despliegue.md`, y la
+prueba manual de extremo a extremo ya en producción que pide el encargo en
+su sección "Verificación".
