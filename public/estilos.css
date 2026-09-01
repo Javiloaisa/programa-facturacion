@@ -205,6 +205,8 @@ details.avanzado summary { cursor: pointer; font-weight: 600; padding: 0.4em 0; 
 .factura-titulo { font-size: 1.8em; font-weight: 700; color: var(--acento); margin-bottom: 0.6em; }
 
 .factura-mini-tabla {
+  width: 50%;
+  border: 1px solid var(--borde);
   border-collapse: separate;
   border-spacing: 0 3px;
   font-size: 0.9em;
@@ -221,6 +223,14 @@ details.avanzado summary { cursor: pointer; font-weight: 600; padding: 0.4em 0; 
   grid-template-columns: 1fr 1fr;
   gap: 2em;
   margin-bottom: 10mm;
+}
+.parte-etiqueta {
+  display: block;
+  font-size: 0.7em;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--texto-suave);
+  margin-bottom: 0.3em;
 }
 .factura-partes h4 {
   margin: 0 0 0.4em;

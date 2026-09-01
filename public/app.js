@@ -478,6 +478,7 @@ function renderDetalleFactura(f) {
 
         <div class="factura-partes">
           <div class="parte">
+            <span class="parte-etiqueta">Emisor</span>
             <h4>${esc(emisor.nombre || '')}</h4>
             <p>
               Dirección: ${esc(emisor.direccion || '')}<br>
@@ -488,6 +489,7 @@ function renderDetalleFactura(f) {
             </p>
           </div>
           <div class="parte">
+            <span class="parte-etiqueta">Cliente</span>
             <h4>${esc(f.clienteSnapshot?.nombre || '')}</h4>
             <p>
               Dirección: ${esc(f.clienteSnapshot?.direccion || '')}<br>
