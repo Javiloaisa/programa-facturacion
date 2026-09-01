@@ -458,32 +458,52 @@ function mostrarErrorFormulario(err) {
 }
 
 function renderDetalleFactura(f) {
+  const emisor = estado.config?.emisor || {};
   $contenido.innerHTML = `
     <div class="barra-acciones no-imprimir">
       <a href="#/facturas">← Volver</a>
       <div class="espaciador"></div>
       ${f.estado === 'confirmada' && !f.cobrada && !estado.soloLectura ? `<button id="btn-cobrar">Marcar cobrada</button>` : ''}
       ${f.estado === 'confirmada' && f.tipo !== 'R1' && !estado.soloLectura ? `<button id="btn-rectificar">Rectificar</button>` : ''}
-      <button id="btn-imprimir">Imprimir</button>
+      <button id="btn-imprimir" class="primario">Imprimir</button>
     </div>
     <article class="factura-doc">
-      <header>
+      <header class="factura-cabecera">
         <div>
-          <strong>${esc(f.clienteSnapshot?.nombre || '')}</strong><br>
-          NIF ${esc(f.clienteSnapshot?.nif || '')}<br>
-          ${esc(f.clienteSnapshot?.direccion || '')}<br>
-          ${esc(f.clienteSnapshot?.cp || '')} ${esc(f.clienteSnapshot?.poblacion || '')} (${esc(f.clienteSnapshot?.provincia || '')})
+          <div class="factura-etiqueta">Factura</div>
+          <div class="factura-numero">${esc(f.numero || 'Borrador')}</div>
         </div>
-        <div class="texto-derecha">
-          <strong>Factura ${esc(f.numero)}</strong><br>
-          Fecha: ${fmtFecha(f.fecha)}<br>
-          Vencimiento: ${fmtFecha(f.fechaVencimiento)}<br>
-          ${f.rectificaA ? `Rectifica a factura ${esc(f.rectificaA)}<br>` : ''}
-          ${f.cobrada ? `<span class="etiqueta cobrada">Cobrada el ${fmtFecha(f.fechaCobro)}</span>` : (f.estado === 'confirmada' ? '<span class="etiqueta pendiente">Pendiente de cobro</span>' : '')}
+        <div class="factura-meta texto-derecha">
+          <div>Fecha de emisión: <strong>${fmtFecha(f.fecha)}</strong></div>
+          <div>Vencimiento: <strong>${fmtFecha(f.fechaVencimiento)}</strong></div>
+          ${f.rectificaA ? `<div>Rectifica a la factura ${esc(f.rectificaA)}</div>` : ''}
+          <div>${f.cobrada ? `<span class="etiqueta cobrada">Cobrada el ${fmtFecha(f.fechaCobro)}</span>` : (f.estado === 'confirmada' ? '<span class="etiqueta pendiente">Pendiente de cobro</span>' : '')}</div>
         </div>
       </header>
 
-      <table>
+      <div class="factura-partes">
+        <div class="parte">
+          <h4>Emisor</h4>
+          <p>
+            <strong>${esc(emisor.nombre || '')}</strong><br>
+            NIF ${esc(emisor.nif || '')}<br>
+            ${esc(emisor.direccion || '')}<br>
+            ${esc(emisor.cp || '')} ${esc(emisor.poblacion || '')}${emisor.provincia ? ` (${esc(emisor.provincia)})` : ''}
+            ${emisor.email ? `<br>${esc(emisor.email)}` : ''}
+          </p>
+        </div>
+        <div class="parte">
+          <h4>Cliente</h4>
+          <p>
+            <strong>${esc(f.clienteSnapshot?.nombre || '')}</strong><br>
+            NIF ${esc(f.clienteSnapshot?.nif || '')}<br>
+            ${esc(f.clienteSnapshot?.direccion || '')}<br>
+            ${esc(f.clienteSnapshot?.cp || '')} ${esc(f.clienteSnapshot?.poblacion || '')}${f.clienteSnapshot?.provincia ? ` (${esc(f.clienteSnapshot.provincia)})` : ''}
+          </p>
+        </div>
+      </div>
+
+      <table class="factura-lineas">
         <thead><tr><th>Concepto</th><th class="num">Cantidad</th><th class="num">Precio</th><th class="num">Importe</th></tr></thead>
         <tbody>
           ${f.lineas.map((l) => `<tr><td>${esc(l.concepto)}</td><td class="num">${l.cantidad}</td><td class="num">${fmtEUR(l.precio)}</td><td class="num">${fmtEUR(l.cantidad * l.precio)}</td></tr>`).join('')}
@@ -496,6 +516,8 @@ function renderDetalleFactura(f) {
         <div class="linea-total">Retención IRPF (-${f.tipoIrpf}%) <span>-${fmtEUR(f.cuotaIrpf)}</span></div>
         <div class="linea-total gran-total">Total <span>${fmtEUR(f.total)}</span></div>
       </div>
+
+      ${emisor.iban ? `<footer class="factura-pie">Forma de pago: transferencia bancaria a ${esc(emisor.iban)}</footer>` : ''}
     </article>
   `;
   document.getElementById('btn-imprimir').addEventListener('click', () => window.print());

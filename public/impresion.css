@@ -16,7 +16,9 @@
   .factura-doc {
     border: none;
     padding: 0;
+    width: auto;
     max-width: none;
+    margin: 0;
     box-shadow: none;
   }
 

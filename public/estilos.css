@@ -184,12 +184,77 @@ details.avanzado { margin-top: 1em; }
 details.avanzado summary { cursor: pointer; font-weight: 600; padding: 0.4em 0; }
 
 /* --- Factura: vista de detalle / impresion ------------------------------ */
+/* Ancho de A4 (210mm) tambien en pantalla, para que la vista previa ya se
+   parezca a la hoja impresa. Sin sombras ni degradados (encargo §9): solo
+   un borde y una regla de acento arriba para separarla del fondo. */
 
-.factura-doc { background: var(--superficie); border: 1px solid var(--borde); padding: 2em; max-width: 48em; }
-.factura-doc header { display: flex; justify-content: space-between; margin-bottom: 2em; }
+.factura-doc {
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  width: 210mm;
+  max-width: 100%;
+  padding: 16mm;
+  margin: 0 auto;
+  border-top: 4px solid var(--acento);
+}
+
+.factura-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 1em;
+  margin-bottom: 1.75em;
+  border-bottom: 1px solid var(--borde);
+}
+.factura-etiqueta {
+  font-size: 0.8em;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--texto-suave);
+}
+.factura-numero {
+  font-family: var(--fuente-num);
+  font-size: 1.7em;
+  font-weight: 700;
+  color: var(--acento);
+}
+.factura-meta div { margin-bottom: 0.25em; }
+
+.factura-partes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2em;
+  margin-bottom: 2em;
+}
+.factura-partes h4 {
+  margin: 0 0 0.4em;
+  font-size: 0.75em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--texto-suave);
+}
+.factura-partes p { margin: 0; line-height: 1.55; }
+
+.factura-lineas { margin-bottom: 1.75em; }
+.factura-lineas thead th { border-bottom: 2px solid var(--borde); }
+
 .factura-doc .totales { margin-left: auto; width: 16em; }
-.factura-doc .totales .linea-total { display: flex; justify-content: space-between; padding: 0.2em 0; }
-.factura-doc .totales .linea-total.gran-total { font-weight: 700; border-top: 1px solid var(--borde); margin-top: 0.3em; padding-top: 0.4em; }
+.factura-doc .totales .linea-total { display: flex; justify-content: space-between; padding: 0.25em 0; }
+.factura-doc .totales .linea-total.gran-total {
+  font-weight: 700;
+  font-size: 1.15em;
+  border-top: 1px solid var(--borde);
+  margin-top: 0.4em;
+  padding-top: 0.5em;
+}
+
+.factura-pie {
+  margin-top: 2.5em;
+  padding-top: 1em;
+  border-top: 1px solid var(--borde);
+  font-size: 0.85em;
+  color: var(--texto-suave);
+}
 
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
