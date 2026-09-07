@@ -95,6 +95,30 @@ encargo original está en [encargo-facturacion.md](encargo-facturacion.md).
       salió al revisar con Playwright). Todo con test o verificación en
       navegador — ver el commit para el detalle. `npm test` → 41/41.
 
+- [x] **Presupuestos** (añadido después del encargo, a petición del
+      usuario). Colección `presupuestos` nueva, pestaña propia en la nav,
+      serie y contador propios (`seriePresupuesto`, `siguientePresupuesto`,
+      `validezDias` en config, editables desde Ajustes salvo el contador).
+      Deliberadamente **fuera de lo fiscal**: no encadena huellas, no entra
+      en libros ni en los modelos 303/130, se numera al guardar (sin paso
+      de "confirmar") y se puede editar y borrar siempre. Estados
+      pendiente/aceptado/rechazado, más "caducado" derivado de `validoHasta`
+      al vuelo (no se guarda, para no necesitar ningún proceso que vaya
+      marcando). `POST /api/presupuestos/:id/convertir` crea un **borrador**
+      de factura con las mismas líneas y el cliente actual, y a partir de
+      ahí es una factura normal que se numera al confirmarla; el
+      presupuesto queda marcado con `facturaId` y ya no se edita ni se
+      borra. 10 tests nuevos (`npm test` → 50/50) y ciclo completo probado
+      contra un servidor real: P-0001 → convertir → A-0001 en el libro de
+      ventas y en la casilla 07 del 303, con la cadena de huellas intacta.
+      De paso salió un bug preexistente del router del frontend: los
+      filtros van dentro del hash (`#/facturas?anio=2025`), donde
+      `location.search` está siempre vacío y el regex de la ruta no casaba,
+      así que **ningún filtro de año/trimestre funcionaba** en ninguna
+      sección (daban "Página no encontrada"). Arreglado con `partirHash()`
+      / `consultaRuta()` / `seccionActual()`, que además arregla el atajo
+      "n" cuando había un filtro activo.
+
 ## Pendiente
 
 Nada del árbol de PLAN.md/encargo §12 queda por hacer. Antes de dar el

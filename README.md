@@ -10,12 +10,22 @@ siempre el mismo estado.
 El encargo original está en [encargo-facturacion.md](encargo-facturacion.md)
 y todas las decisiones de arquitectura, con su porqué, en [PLAN.md](PLAN.md).
 
+## Presupuestos
+
+Añadidos después del encargo. Un presupuesto **no es un documento fiscal**:
+tiene su propia serie (`P-0001` por defecto) y su propio contador, se numera
+al guardarlo, se puede editar y borrar siempre, y no aparece ni en los libros
+registro ni en los modelos 303/130 ni en la cadena de huellas. Lo único que
+le da efectos fiscales es «Convertir en factura», que crea un **borrador** de
+factura con las mismas líneas; a partir de ahí es una factura corriente y se
+numera al confirmarla. Serie y días de validez se cambian en Ajustes.
+
 ## Arrancar en local
 
 Requiere Node.js ≥ 22.
 
 ```bash
-npm test                    # node --test test/ (40 casos: fiscal.js + API)
+npm test                    # node --test test/ (50 casos: fiscal.js + API)
 node server.js --set-password   # fija la contraseña (pide dos veces, sin eco)
 node server.js                  # arranca en http://127.0.0.1:8080
 ```

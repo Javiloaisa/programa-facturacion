@@ -38,6 +38,7 @@ function crearRouter() {
     get: (p, m) => definir('GET', p, m),
     post: (p, m) => definir('POST', p, m),
     put: (p, m) => definir('PUT', p, m),
+    del: (p, m) => definir('DELETE', p, m),
     async despachar(req, res, ctx) {
       for (const r of rutas) {
         if (r.metodo !== req.method) continue;
@@ -67,9 +68,9 @@ function sumarDias(fechaISO, dias) {
   return d.toISOString().slice(0, 10);
 }
 
-function validarLineas(lineas) {
+function validarLineas(lineas, que = 'La factura') {
   if (!Array.isArray(lineas) || lineas.length === 0) {
-    throw new ErrorHttp(400, 'La factura necesita al menos una línea.');
+    throw new ErrorHttp(400, `${que} necesita al menos una línea.`);
   }
   for (const l of lineas) {
     if (!l || typeof l.concepto !== 'string' || !l.concepto.trim()) {
@@ -563,6 +564,208 @@ function registrarRutas(router, { store, estado, revisarIntegridad }) {
     enviarJSON(res, 200, facturaCobrada);
   });
 
+  // --- Presupuestos ---------------------------------------------------------
+  // Un presupuesto NO es un documento fiscal: no entra en los libros
+  // registro ni en los modelos 303/130, no encadena huellas y su numeracion
+  // puede tener huecos sin que pase nada. Por eso se numera al crearlo (sin
+  // paso de "confirmar") y se puede borrar. Lo unico que le da efectos
+  // fiscales es convertirlo en factura, y eso ya es la factura.
+
+  const ESTADOS_PRESUPUESTO = ['pendiente', 'aceptado', 'rechazado'];
+
+  router.get('/api/presupuestos', async (req, res, ctx) => {
+    const q = ctx.url.searchParams;
+    let presupuestos = await store.leer('presupuestos');
+    const anio = q.get('anio') ? Number(q.get('anio')) : null;
+    const clienteId = q.get('clienteId');
+    const estadoFiltro = q.get('estado');
+    if (anio) presupuestos = presupuestos.filter((p) => fiscal.anioDe(p.fecha) === anio);
+    if (clienteId) presupuestos = presupuestos.filter((p) => p.clienteId === clienteId);
+    if (estadoFiltro) presupuestos = presupuestos.filter((p) => p.estado === estadoFiltro);
+    enviarJSON(res, 200, presupuestos);
+  });
+
+  router.post('/api/presupuestos', async (req, res) => {
+    const body = await leerJSON(req);
+    if (!body.clienteId) throw new ErrorHttp(400, 'Falta clienteId.');
+    if (!body.fecha) throw new ErrorHttp(400, 'Falta fecha.');
+    validarLineas(body.lineas, 'El presupuesto');
+
+    const clientes = await store.leer('clientes');
+    const cliente = clientes.find((c) => c.id === body.clienteId);
+    if (!cliente) throw new ErrorHttp(400, 'El cliente indicado no existe.');
+
+    let presupuesto = null;
+    await store.actualizar('config', (config) => {
+      const serie = config.seriePresupuesto || 'P';
+      const numeroActual = config.siguientePresupuesto || 1;
+      const tipoIva = body.tipoIva ?? config.tipoIva;
+      const tipoIrpf = body.tipoIrpf ?? config.tipoIrpf;
+      presupuesto = {
+        id: crypto.randomUUID(),
+        serie,
+        numero: `${serie}-${pad4(numeroActual)}`,
+        fecha: body.fecha,
+        validoHasta: sumarDias(body.fecha, config.validezDias ?? 30),
+        clienteId: body.clienteId,
+        clienteSnapshot: { ...cliente },
+        lineas: body.lineas,
+        ...fiscal.calcularFactura({ lineas: body.lineas, tipoIva, tipoIrpf }),
+        notas: body.notas || '',
+        estado: 'pendiente',
+        facturaId: null,
+        creadoEn: isoConHuso(),
+      };
+      config.siguientePresupuesto = numeroActual + 1;
+      return config;
+    });
+    await store.actualizar('presupuestos', (lista) => {
+      lista.push(presupuesto);
+      return lista;
+    });
+    enviarJSON(res, 201, presupuesto);
+  });
+
+  router.put('/api/presupuestos/:id', async (req, res, ctx, { id }) => {
+    const body = await leerJSON(req);
+    const config = await store.leer('config');
+    let clientes = null;
+
+    let actualizado = null;
+    await store.actualizar('presupuestos', async (lista) => {
+      const idx = lista.findIndex((p) => p.id === id);
+      if (idx === -1) throw new ErrorHttp(404, 'Presupuesto no encontrado.');
+      const actual = lista[idx];
+      if (actual.facturaId) {
+        throw new ErrorHttp(409, 'Este presupuesto ya se convirtió en factura: edita la factura.');
+      }
+
+      const lineas = body.lineas ?? actual.lineas;
+      validarLineas(lineas, 'El presupuesto');
+      const fecha = body.fecha ?? actual.fecha;
+
+      let clienteId = actual.clienteId;
+      let clienteSnapshot = actual.clienteSnapshot;
+      if (body.clienteId && body.clienteId !== actual.clienteId) {
+        clientes = clientes || (await store.leer('clientes'));
+        const cliente = clientes.find((c) => c.id === body.clienteId);
+        if (!cliente) throw new ErrorHttp(400, 'El cliente indicado no existe.');
+        clienteId = cliente.id;
+        clienteSnapshot = { ...cliente };
+      }
+
+      actualizado = {
+        ...actual,
+        clienteId,
+        clienteSnapshot,
+        fecha,
+        validoHasta: sumarDias(fecha, config.validezDias ?? 30),
+        lineas,
+        ...fiscal.calcularFactura({
+          lineas,
+          tipoIva: body.tipoIva ?? actual.tipoIva,
+          tipoIrpf: body.tipoIrpf ?? actual.tipoIrpf,
+        }),
+        notas: body.notas ?? actual.notas,
+      };
+      lista[idx] = actualizado;
+      return lista;
+    });
+    enviarJSON(res, 200, actualizado);
+  });
+
+  router.post('/api/presupuestos/:id/estado', async (req, res, ctx, { id }) => {
+    const body = await leerJSON(req);
+    if (!ESTADOS_PRESUPUESTO.includes(body.estado)) {
+      throw new ErrorHttp(400, `Estado no válido. Usa: ${ESTADOS_PRESUPUESTO.join(', ')}.`);
+    }
+    let actualizado = null;
+    await store.actualizar('presupuestos', (lista) => {
+      const idx = lista.findIndex((p) => p.id === id);
+      if (idx === -1) throw new ErrorHttp(404, 'Presupuesto no encontrado.');
+      actualizado = { ...lista[idx], estado: body.estado };
+      lista[idx] = actualizado;
+      return lista;
+    });
+    enviarJSON(res, 200, actualizado);
+  });
+
+  router.del('/api/presupuestos/:id', async (req, res, ctx, { id }) => {
+    await store.actualizar('presupuestos', (lista) => {
+      const idx = lista.findIndex((p) => p.id === id);
+      if (idx === -1) throw new ErrorHttp(404, 'Presupuesto no encontrado.');
+      if (lista[idx].facturaId) {
+        throw new ErrorHttp(409, 'No se puede borrar un presupuesto ya convertido en factura.');
+      }
+      lista.splice(idx, 1);
+      return lista;
+    });
+    enviarJSON(res, 200, { ok: true });
+  });
+
+  // Convertir en factura: crea un BORRADOR con las mismas lineas, y con el
+  // cliente actual (no el del snapshot del presupuesto, que puede llevar
+  // meses guardado). El borrador se numera al confirmarlo, como cualquiera.
+  router.post('/api/presupuestos/:id/convertir', async (req, res, ctx, { id }) => {
+    exigirEscritura();
+    const body = await leerJSON(req);
+
+    const [presupuestos, clientes, config] = await Promise.all([
+      store.leer('presupuestos'),
+      store.leer('clientes'),
+      store.leer('config'),
+    ]);
+    const presupuesto = presupuestos.find((p) => p.id === id);
+    if (!presupuesto) throw new ErrorHttp(404, 'Presupuesto no encontrado.');
+    if (presupuesto.facturaId) throw new ErrorHttp(409, 'Este presupuesto ya se convirtió en factura.');
+    validarLineas(presupuesto.lineas, 'El presupuesto');
+
+    const cliente = clientes.find((c) => c.id === presupuesto.clienteId);
+    if (!cliente) throw new ErrorHttp(400, 'El cliente del presupuesto ya no existe.');
+
+    const fecha = body.fecha || new Date().toISOString().slice(0, 10);
+    const factura = {
+      id: crypto.randomUUID(),
+      orden: null,
+      serie: config.serie,
+      numero: null,
+      fecha,
+      fechaVencimiento: sumarDias(fecha, config.vencimientoDias),
+      clienteId: presupuesto.clienteId,
+      clienteSnapshot: { ...cliente },
+      lineas: presupuesto.lineas,
+      ...fiscal.calcularFactura({
+        lineas: presupuesto.lineas,
+        tipoIva: presupuesto.tipoIva,
+        tipoIrpf: presupuesto.tipoIrpf,
+      }),
+      tipo: 'F1',
+      rectificaA: null,
+      presupuestoId: presupuesto.id,
+      motivo: presupuesto.notas || '',
+      estado: 'borrador',
+      cobrada: false,
+      fechaCobro: null,
+      nifEmisor: null,
+      generadaEn: null,
+      huellaAnterior: null,
+      huella: null,
+    };
+
+    await store.actualizar('facturas', (lista) => {
+      lista.push(factura);
+      return lista;
+    });
+    // El presupuesto se marca solo una vez la factura existe: si lo de
+    // arriba fallara, el presupuesto seguiria siendo convertible.
+    await store.actualizar('presupuestos', (lista) => {
+      const idx = lista.findIndex((p) => p.id === id);
+      if (idx !== -1) lista[idx] = { ...lista[idx], estado: 'aceptado', facturaId: factura.id };
+      return lista;
+    });
+    enviarJSON(res, 201, factura);
+  });
+
   // --- Gastos -------------------------------------------------------------
 
   router.get('/api/gastos', async (req, res, ctx) => {
@@ -753,14 +956,17 @@ function registrarRutas(router, { store, estado, revisarIntegridad }) {
       if (body.emisor) config.emisor = { ...config.emisor, ...body.emisor };
       if (typeof body.serie === 'string') config.serie = body.serie;
       if (typeof body.serieRectificativa === 'string') config.serieRectificativa = body.serieRectificativa;
+      if (typeof body.seriePresupuesto === 'string') config.seriePresupuesto = body.seriePresupuesto;
+      if (Number.isFinite(body.validezDias)) config.validezDias = body.validezDias;
       if (Number.isFinite(body.tipoIva)) config.tipoIva = body.tipoIva;
       if (Number.isFinite(body.tipoIrpf)) config.tipoIrpf = body.tipoIrpf;
       if (typeof body.presenta130 === 'boolean') config.presenta130 = body.presenta130;
       if (Number.isFinite(body.vencimientoDias)) config.vencimientoDias = body.vencimientoDias;
       if (body.avanzado) config.avanzado = { ...config.avanzado, ...body.avanzado };
       return config;
-      // siguienteNumero/siguienteRectificativa no se tocan aqui: solo los
-      // avanza la confirmacion de facturas, para no romper la numeracion.
+      // Los contadores (siguienteNumero, siguienteRectificativa,
+      // siguientePresupuesto) no se tocan aqui: solo los avanza el acto que
+      // numera el documento, para no romper la numeracion.
     });
     enviarJSON(res, 200, nuevo);
   });

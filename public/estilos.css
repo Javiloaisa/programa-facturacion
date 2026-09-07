@@ -163,6 +163,25 @@ td.num input { text-align: right; }
    (encargo §9), así que aquí solo un tono neutro que llama la atención
    sin sumar un segundo color de acento. */
 .etiqueta.pendiente { background: var(--fondo); color: var(--texto-suave); border: 1px solid var(--borde); }
+/* Estados de presupuesto. Un presupuesto rechazado o caducado no es un
+   error contable, solo una oferta que no salió: mismo tono neutro que
+   "pendiente de cobro", sin gastar el rojo (encargo §9). */
+.etiqueta.aceptado { background: #e6f0e8; color: var(--verde); }
+.etiqueta.rechazado,
+.etiqueta.caducado { background: var(--fondo); color: var(--texto-suave); border: 1px solid var(--borde); }
+
+/* Enlace que hace de acción dentro de una barra: mismo aspecto que un
+   <button> normal, para que "Editar" o "Ver factura" no desentonen. */
+.boton-enlace {
+  display: inline-block;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 0.4em 0.8em;
+  color: var(--texto);
+  text-decoration: none;
+}
+.boton-enlace:hover { background: var(--acento-suave); }
 
 /* --- Casillas de impuestos --------------------------------------------- */
 

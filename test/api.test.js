@@ -507,3 +507,153 @@ describe('API — numeración concurrente', () => {
     assert.equal(verificacion.ok, true, 'la cadena de huellas debe seguir siendo válida');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Presupuestos: numeracion propia, edicion libre y paso a factura.
+// ---------------------------------------------------------------------------
+
+describe('API — presupuestos', () => {
+  let ctx;
+  let cliente;
+  let clienteId;
+  const authObj = auth.crearAuth(PASSWORD);
+
+  before(async () => {
+    ctx = await levantarApp({ auth: authObj });
+    cliente = crearCliente(ctx.port);
+    await cliente.peticion('POST', '/api/login', { password: PASSWORD });
+    clienteId = 'cli-presu';
+    await cliente.peticion('POST', `/api/clientes/${clienteId}`, {
+      nombre: 'Cliente de presupuesto',
+      nif: 'B12345674',
+      direccion: 'Calle Falsa 1',
+    });
+  });
+
+  after(async () => {
+    await ctx.cerrar();
+  });
+
+  const lineas = [{ concepto: 'Desarrollo a medida', cantidad: 10, precio: 50 }];
+
+  test('crear presupuesto lo numera al momento y calcula igual que una factura', async () => {
+    const r = await cliente.peticion('POST', '/api/presupuestos', {
+      clienteId,
+      fecha: '2026-03-10',
+      lineas,
+    });
+    assert.equal(r.status, 201);
+    assert.equal(r.body.numero, 'P-0001');
+    assert.equal(r.body.estado, 'pendiente');
+    assert.equal(r.body.facturaId, null);
+    assert.equal(r.body.base, 500);
+    assert.equal(r.body.cuotaIva, 105);
+    assert.equal(r.body.cuotaIrpf, 75);
+    assert.equal(r.body.total, 530);
+    // validezDias por defecto: 30 dias naturales.
+    assert.equal(r.body.validoHasta, '2026-04-09');
+  });
+
+  test('el contador de presupuestos avanza y es independiente del de facturas', async () => {
+    const segundo = await cliente.peticion('POST', '/api/presupuestos', {
+      clienteId,
+      fecha: '2026-03-11',
+      lineas,
+    });
+    assert.equal(segundo.body.numero, 'P-0002');
+    const config = await cliente.peticion('GET', '/api/config');
+    assert.equal(config.body.siguientePresupuesto, 3);
+    assert.equal(config.body.siguienteNumero, 1, 'crear presupuestos no toca la serie de facturas');
+  });
+
+  test('un presupuesto se puede editar sin restricciones de estado', async () => {
+    const lista = await cliente.peticion('GET', '/api/presupuestos');
+    const p = lista.body.find((x) => x.numero === 'P-0002');
+    const r = await cliente.peticion('PUT', `/api/presupuestos/${p.id}`, {
+      lineas: [{ concepto: 'Desarrollo a medida', cantidad: 20, precio: 50 }],
+    });
+    assert.equal(r.status, 200);
+    assert.equal(r.body.base, 1000);
+    assert.equal(r.body.numero, 'P-0002', 'editar no renumera');
+  });
+
+  test('rechaza presupuesto sin líneas y estado no válido', async () => {
+    const sinLineas = await cliente.peticion('POST', '/api/presupuestos', {
+      clienteId,
+      fecha: '2026-03-12',
+      lineas: [],
+    });
+    assert.equal(sinLineas.status, 400);
+
+    const lista = await cliente.peticion('GET', '/api/presupuestos');
+    const p = lista.body[0];
+    const malEstado = await cliente.peticion('POST', `/api/presupuestos/${p.id}/estado`, {
+      estado: 'facturado',
+    });
+    assert.equal(malEstado.status, 400);
+  });
+
+  test('marcar aceptado / rechazado', async () => {
+    const lista = await cliente.peticion('GET', '/api/presupuestos');
+    const p = lista.body.find((x) => x.numero === 'P-0002');
+    const r = await cliente.peticion('POST', `/api/presupuestos/${p.id}/estado`, { estado: 'rechazado' });
+    assert.equal(r.status, 200);
+    assert.equal(r.body.estado, 'rechazado');
+    const soloRechazados = await cliente.peticion('GET', '/api/presupuestos?estado=rechazado');
+    assert.equal(soloRechazados.body.length, 1);
+  });
+
+  test('convertir en factura crea un borrador con las mismas líneas', async () => {
+    const lista = await cliente.peticion('GET', '/api/presupuestos');
+    const p = lista.body.find((x) => x.numero === 'P-0001');
+
+    const r = await cliente.peticion('POST', `/api/presupuestos/${p.id}/convertir`, { fecha: '2026-03-20' });
+    assert.equal(r.status, 201);
+    assert.equal(r.body.estado, 'borrador');
+    assert.equal(r.body.numero, null, 'la factura se numera al confirmarla, no al convertir');
+    assert.equal(r.body.presupuestoId, p.id);
+    assert.equal(r.body.base, 500);
+    assert.equal(r.body.total, 530);
+    assert.deepEqual(r.body.lineas, p.lineas);
+
+    const despues = await cliente.peticion('GET', '/api/presupuestos');
+    const convertido = despues.body.find((x) => x.id === p.id);
+    assert.equal(convertido.estado, 'aceptado');
+    assert.equal(convertido.facturaId, r.body.id);
+  });
+
+  test('un presupuesto ya convertido no se edita, ni se borra, ni se reconvierte', async () => {
+    const lista = await cliente.peticion('GET', '/api/presupuestos');
+    const p = lista.body.find((x) => x.facturaId);
+
+    const edicion = await cliente.peticion('PUT', `/api/presupuestos/${p.id}`, { lineas });
+    assert.equal(edicion.status, 409);
+    const borrado = await cliente.peticion('DELETE', `/api/presupuestos/${p.id}`);
+    assert.equal(borrado.status, 409);
+    const otraVez = await cliente.peticion('POST', `/api/presupuestos/${p.id}/convertir`, {});
+    assert.equal(otraVez.status, 409);
+  });
+
+  test('borrar un presupuesto no convertido lo quita de la lista', async () => {
+    const lista = await cliente.peticion('GET', '/api/presupuestos');
+    const p = lista.body.find((x) => !x.facturaId);
+    const r = await cliente.peticion('DELETE', `/api/presupuestos/${p.id}`);
+    assert.equal(r.status, 200);
+    const despues = await cliente.peticion('GET', '/api/presupuestos');
+    assert.equal(despues.body.find((x) => x.id === p.id), undefined);
+  });
+
+  test('los presupuestos no entran en el libro de ventas ni en el 303', async () => {
+    // Es lo que separa un presupuesto de una factura: aunque P-0001 ya se
+    // convirtio, la factura resultante sigue en borrador, asi que no debe
+    // aparecer en ningun sitio con efectos fiscales.
+    const libro = await cliente.peticion('GET', '/api/libros/ventas.csv?anio=2026');
+    assert.equal(libro.status, 200);
+    assert.ok(!String(libro.body).includes('P-0001'));
+    assert.ok(!String(libro.body).includes('Desarrollo a medida'));
+
+    const m303 = await cliente.peticion('GET', '/api/impuestos/303?anio=2026&trimestre=1');
+    assert.equal(m303.status, 200);
+    assert.equal(Number(m303.body.casillas['07'] || 0), 0);
+  });
+});

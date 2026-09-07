@@ -183,10 +183,30 @@ function irA(nuevoHash) {
   else location.hash = nuevoHash;
 }
 
+// Los filtros viajan dentro del propio hash (#/facturas?anio=2025). Al ir
+// detrás de la almohadilla el navegador los deja en location.hash y
+// location.search queda siempre vacío, así que hay que partirlo a mano:
+// la parte de delante es la ruta a casar, la de detrás son los filtros.
+function partirHash() {
+  const completo = location.hash.replace(/^#/, '');
+  const corte = completo.indexOf('?');
+  return corte === -1
+    ? { camino: completo, consulta: new URLSearchParams() }
+    : { camino: completo.slice(0, corte), consulta: new URLSearchParams(completo.slice(corte + 1)) };
+}
+
+function consultaRuta() {
+  return partirHash().consulta;
+}
+
+function seccionActual() {
+  return partirHash().camino.split('/')[1] || '';
+}
+
 async function renderRuta() {
   if (!estado.autenticado) return;
   if (!location.hash) history.replaceState(null, '', '#/facturas');
-  const hash = location.hash.replace(/^#/, '');
+  const hash = partirHash().camino;
   const seccion = hash.split('/')[1] || 'facturas';
   for (const a of document.querySelectorAll('#nav-lateral a')) {
     a.classList.toggle('activo', a.dataset.seccion === seccion);
@@ -226,14 +246,15 @@ document.addEventListener('keydown', (ev) => {
   }
 
   if (!enCampo && ev.key === 'n' && !ev.ctrlKey && !ev.metaKey && !ev.altKey) {
-    const seccion = (location.hash.split('/')[1] || '');
+    const seccion = seccionActual();
     if (seccion === 'facturas') { ev.preventDefault(); location.hash = '#/facturas/nueva'; }
+    else if (seccion === 'presupuestos') { ev.preventDefault(); location.hash = '#/presupuestos/nuevo'; }
     else if (seccion === 'gastos') { ev.preventDefault(); location.hash = '#/gastos/nueva'; }
     else if (seccion === 'inversiones') { ev.preventDefault(); location.hash = '#/inversiones/nuevo'; }
   }
 
   if (ev.key === 'Escape' && !enCampo) {
-    const seccion = (location.hash.split('/')[1] || '');
+    const seccion = seccionActual();
     if (seccion) location.hash = `#/${seccion}`;
   }
 });
@@ -243,7 +264,7 @@ document.addEventListener('keydown', (ev) => {
 // ---------------------------------------------------------------------------
 
 ruta('/facturas', async () => {
-  const q = new URLSearchParams(location.search);
+  const q = consultaRuta();
   const anio = Number(q.get('anio')) || anioActual();
   const trimestre = q.get('trimestre') || '';
   const facturas = await api('GET', `/api/facturas?anio=${anio}${trimestre ? `&trimestre=${trimestre}` : ''}`);
@@ -280,7 +301,7 @@ ruta('/facturas', async () => {
 });
 
 function navegarFiltro(cambios) {
-  const q = new URLSearchParams(location.search);
+  const q = consultaRuta();
   for (const [k, v] of Object.entries(cambios)) { if (v) q.set(k, v); else q.delete(k); }
   location.hash = `#/facturas?${q.toString()}`;
 }
@@ -614,11 +635,328 @@ ruta('/clientes', async () => {
 });
 
 // ---------------------------------------------------------------------------
+// Presupuestos
+// ---------------------------------------------------------------------------
+// Mismo documento que una factura por fuera, pero sin valor fiscal: se
+// numera al guardarlo, se puede editar y borrar siempre, y no aparece en
+// libros ni impuestos. El paso a factura crea un borrador aparte.
+
+const ESTADOS_PRESUPUESTO = [
+  ['pendiente', 'Pendiente'],
+  ['aceptado', 'Aceptado'],
+  ['rechazado', 'Rechazado'],
+];
+
+ruta('/presupuestos', async () => {
+  const q = consultaRuta();
+  const anio = Number(q.get('anio')) || anioActual();
+  const estadoFiltro = q.get('estado') || '';
+  const presupuestos = await api(
+    'GET',
+    `/api/presupuestos?anio=${anio}${estadoFiltro ? `&estado=${estadoFiltro}` : ''}`
+  );
+  presupuestos.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+
+  $contenido.innerHTML = `
+    <h2>Presupuestos</h2>
+    <div class="barra-acciones">
+      <label class="filtro-linea">Año
+        <select id="p-anio">${opcionesAnios(anio)}</select>
+      </label>
+      <label class="filtro-linea">Estado
+        <select id="p-estado">
+          <option value="">Todos</option>
+          ${ESTADOS_PRESUPUESTO.map(([v, t]) => `<option value="${v}" ${v === estadoFiltro ? 'selected' : ''}>${t}</option>`).join('')}
+        </select>
+      </label>
+      <div class="espaciador"></div>
+      <button type="button" class="primario" id="btn-nuevo-presupuesto">Nuevo presupuesto (n)</button>
+    </div>
+    ${presupuestos.length === 0
+      ? `<div class="estado-vacio">Todavía no hay presupuestos en este período. Crea el primero con «Nuevo presupuesto».</div>`
+      : tablaPresupuestos(presupuestos)}
+  `;
+
+  document.getElementById('p-anio').addEventListener('change', (e) => navegarFiltroPresupuestos({ anio: e.target.value }));
+  document.getElementById('p-estado').addEventListener('change', (e) => navegarFiltroPresupuestos({ estado: e.target.value }));
+  document.getElementById('btn-nuevo-presupuesto').addEventListener('click', () => { location.hash = '#/presupuestos/nuevo'; });
+  $contenido.querySelectorAll('tbody tr[data-id]').forEach((tr) => {
+    tr.addEventListener('click', () => { location.hash = `#/presupuestos/${tr.dataset.id}`; });
+  });
+});
+
+function navegarFiltroPresupuestos(cambios) {
+  const q = consultaRuta();
+  for (const [k, v] of Object.entries(cambios)) { if (v) q.set(k, v); else q.delete(k); }
+  location.hash = `#/presupuestos?${q.toString()}`;
+}
+
+// Caducado no es un estado guardado: se deduce de la fecha cada vez que se
+// mira, para que no haga falta ningún proceso que vaya marcando presupuestos.
+function estaCaducado(p) {
+  return p.estado === 'pendiente' && !!p.validoHasta && p.validoHasta < new Date().toISOString().slice(0, 10);
+}
+
+function etiquetaPresupuesto(p) {
+  if (p.facturaId) return '<span class="etiqueta confirmada">facturado</span>';
+  if (estaCaducado(p)) return '<span class="etiqueta caducado">caducado</span>';
+  const texto = ESTADOS_PRESUPUESTO.find(([v]) => v === p.estado)?.[1] || p.estado;
+  return `<span class="etiqueta ${esc(p.estado)}">${esc(texto.toLowerCase())}</span>`;
+}
+
+function tablaPresupuestos(presupuestos) {
+  return `
+  <div class="tabla-envoltorio"><table>
+    <thead><tr>
+      <th>Fecha</th><th>Número</th><th>Cliente</th><th class="num">Base</th><th class="num">Total</th><th>Válido hasta</th><th>Estado</th>
+    </tr></thead>
+    <tbody>
+      ${presupuestos.map((p) => `
+        <tr data-id="${p.id}" tabindex="0">
+          <td>${fmtFecha(p.fecha)}</td>
+          <td>${esc(p.numero || '')}</td>
+          <td>${esc(p.clienteSnapshot?.nombre || '')}</td>
+          <td class="num">${fmtEUR(p.base)}</td>
+          <td class="num">${fmtEUR(p.total)}</td>
+          <td>${fmtFecha(p.validoHasta)}</td>
+          <td>${etiquetaPresupuesto(p)}</td>
+        </tr>`).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+ruta('/presupuestos/nuevo', async () => {
+  renderFormularioPresupuesto(null);
+});
+
+ruta('/presupuestos/:id', async ({ id }) => {
+  const presupuestos = await api('GET', '/api/presupuestos');
+  const p = presupuestos.find((x) => x.id === id);
+  if (!p) { $contenido.innerHTML = '<p class="mensaje-error">Presupuesto no encontrado.</p>'; return; }
+  renderDetallePresupuesto(p);
+});
+
+ruta('/presupuestos/:id/editar', async ({ id }) => {
+  const presupuestos = await api('GET', '/api/presupuestos');
+  const p = presupuestos.find((x) => x.id === id);
+  if (!p) { $contenido.innerHTML = '<p class="mensaje-error">Presupuesto no encontrado.</p>'; return; }
+  renderFormularioPresupuesto(p);
+});
+
+function renderFormularioPresupuesto(presupuesto) {
+  if (estado.clientes.length === 0) {
+    $contenido.innerHTML = `<div class="estado-vacio">Necesitas al menos un cliente antes de presupuestar. <a href="#/clientes">Crea uno aquí</a>.</div>`;
+    return;
+  }
+  const c = estado.config;
+  const lineas = presupuesto?.lineas?.length ? presupuesto.lineas : [{ concepto: '', cantidad: 1, precio: 0 }];
+
+  $contenido.innerHTML = `
+    <h2>${presupuesto ? `Editar presupuesto ${esc(presupuesto.numero)}` : 'Nuevo presupuesto'}</h2>
+    <form id="form-presupuesto">
+      <div class="fila-campos">
+        <div class="campo">
+          <label for="fp-cliente">Cliente</label>
+          <select id="fp-cliente" required>
+            ${estado.clientes.map((cl) => `<option value="${cl.id}" ${presupuesto?.clienteId === cl.id ? 'selected' : ''}>${esc(cl.nombre)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="campo">
+          <label for="fp-fecha">Fecha</label>
+          <input id="fp-fecha" type="date" required value="${presupuesto?.fecha || new Date().toISOString().slice(0, 10)}">
+        </div>
+        <div class="campo">
+          <label for="fp-iva">Tipo IVA %</label>
+          <input id="fp-iva" type="number" step="0.01" value="${presupuesto?.tipoIva ?? c.tipoIva}">
+        </div>
+        <div class="campo">
+          <label for="fp-irpf">Tipo IRPF %</label>
+          <input id="fp-irpf" type="number" step="0.01" value="${presupuesto?.tipoIrpf ?? c.tipoIrpf}">
+        </div>
+      </div>
+
+      <table id="tabla-lineas">
+        <thead><tr><th>Concepto</th><th class="num">Cantidad</th><th class="num">Precio</th><th></th></tr></thead>
+        <tbody>${lineas.map((l) => filaLinea(l)).join('')}</tbody>
+      </table>
+      <p><button type="button" id="btn-add-linea-p">+ Añadir línea</button></p>
+
+      <div class="bloque" id="fp-preview">
+        <div class="linea-total">Base <span>—</span></div>
+      </div>
+
+      <div class="campo">
+        <label for="fp-notas">Notas / condiciones (opcional)</label>
+        <input id="fp-notas" value="${esc(presupuesto?.notas || '')}">
+      </div>
+
+      <div class="barra-acciones">
+        <button type="submit" class="primario">Guardar presupuesto (Ctrl+S)</button>
+        <a href="${presupuesto ? `#/presupuestos/${presupuesto.id}` : '#/presupuestos'}">Cancelar (Esc)</a>
+      </div>
+    </form>
+  `;
+
+  const $tbody = document.querySelector('#tabla-lineas tbody');
+  document.getElementById('btn-add-linea-p').addEventListener('click', () => {
+    $tbody.insertAdjacentHTML('beforeend', filaLinea({ concepto: '', cantidad: 1, precio: 0 }));
+    actualizarPreview();
+  });
+  $tbody.addEventListener('click', (e) => {
+    if (e.target.dataset.accion === 'quitar') {
+      e.target.closest('tr').remove();
+      actualizarPreview();
+    }
+  });
+  document.getElementById('form-presupuesto').addEventListener('input', actualizarPreview);
+
+  async function actualizarPreview() {
+    try {
+      // /api/facturas/previsualizar es un cálculo puro (base, IVA, IRPF):
+      // no crea nada ni toca contadores, así que sirve igual aquí.
+      const calculo = await api('POST', '/api/facturas/previsualizar', leerFormulario());
+      document.getElementById('fp-preview').innerHTML = `
+        <div class="linea-total">Base <span>${fmtEUR(calculo.base)}</span></div>
+        <div class="linea-total">Cuota IVA (${calculo.tipoIva}%) <span>${fmtEUR(calculo.cuotaIva)}</span></div>
+        <div class="linea-total">Retención IRPF (-${calculo.tipoIrpf}%) <span>-${fmtEUR(calculo.cuotaIrpf)}</span></div>
+        <div class="linea-total gran-total">Total <span>${fmtEUR(calculo.total)}</span></div>
+      `;
+    } catch { /* líneas incompletas todavía: se ignora hasta que sean válidas */ }
+  }
+  actualizarPreview();
+
+  function leerFormulario() {
+    const lineas = [...$tbody.querySelectorAll('tr')].map((tr) => ({
+      concepto: tr.querySelector('.l-concepto').value,
+      cantidad: Number(tr.querySelector('.l-cantidad').value),
+      precio: Number(tr.querySelector('.l-precio').value),
+    }));
+    return {
+      clienteId: document.getElementById('fp-cliente').value,
+      fecha: document.getElementById('fp-fecha').value,
+      tipoIva: Number(document.getElementById('fp-iva').value),
+      tipoIrpf: Number(document.getElementById('fp-irpf').value),
+      lineas,
+      notas: document.getElementById('fp-notas').value,
+    };
+  }
+
+  document.getElementById('form-presupuesto').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const body = leerFormulario();
+    try {
+      const guardado = presupuesto
+        ? await api('PUT', `/api/presupuestos/${presupuesto.id}`, body)
+        : await api('POST', '/api/presupuestos', body);
+      irA(`#/presupuestos/${guardado.id}`);
+    } catch (err) {
+      mostrarErrorFormulario(err);
+    }
+  });
+}
+
+function renderDetallePresupuesto(p) {
+  const emisor = estado.config?.emisor || {};
+  const caducado = estaCaducado(p);
+  $contenido.innerHTML = `
+    <div class="barra-acciones no-imprimir">
+      <a href="#/presupuestos">← Volver</a>
+      <div class="espaciador"></div>
+      ${p.facturaId ? '' : `<a class="boton-enlace" href="#/presupuestos/${p.id}/editar">Editar</a>`}
+      ${p.facturaId || p.estado === 'aceptado' ? '' : `<button id="btn-aceptar">Marcar aceptado</button>`}
+      ${p.facturaId || p.estado === 'rechazado' ? '' : `<button id="btn-rechazar">Marcar rechazado</button>`}
+      ${p.facturaId
+        ? `<a class="boton-enlace" href="#/facturas/${p.facturaId}">Ver factura</a>`
+        : `<button id="btn-convertir" ${estado.soloLectura ? 'disabled' : ''}>Convertir en factura</button>`}
+      ${p.facturaId ? '' : `<button id="btn-borrar-presupuesto">Borrar</button>`}
+      <button id="btn-imprimir" class="primario">Imprimir</button>
+    </div>
+    ${caducado ? `<p class="mensaje-info no-imprimir">Este presupuesto venció el ${fmtFecha(p.validoHasta)}. Si sigue en pie, edítalo para renovar la fecha.</p>` : ''}
+    ${p.facturaId ? `<p class="mensaje-info no-imprimir">Ya convertido en factura: para cambiar importes, edita la factura.</p>` : ''}
+    <article class="factura-doc">
+      <div class="factura-cuerpo">
+        <div class="factura-titulo">Presupuesto</div>
+        <table class="factura-mini-tabla">
+          <tr><th>Número</th><td>${esc(p.numero || '')}</td></tr>
+          <tr><th>Fecha</th><td>${fmtFecha(p.fecha)}</td></tr>
+          <tr><th>Válido hasta</th><td>${fmtFecha(p.validoHasta)}</td></tr>
+        </table>
+
+        <div class="factura-partes">
+          <div class="parte">
+            <span class="parte-etiqueta">Emisor</span>
+            <h4>${esc(emisor.nombre || '')}</h4>
+            <p>
+              Dirección: ${esc(emisor.direccion || '')}<br>
+              NIF: ${esc(emisor.nif || '')}<br>
+              CP y ciudad: ${esc(emisor.cp || '')} ${esc(emisor.poblacion || '')}${emisor.provincia ? ` (${esc(emisor.provincia)})` : ''}
+              ${emisor.email ? `<br>Email: ${esc(emisor.email)}` : ''}
+              ${emisor.telefono ? `<br>Teléfono: ${esc(emisor.telefono)}` : ''}
+            </p>
+          </div>
+          <div class="parte">
+            <span class="parte-etiqueta">Cliente</span>
+            <h4>${esc(p.clienteSnapshot?.nombre || '')}</h4>
+            <p>
+              Dirección: ${esc(p.clienteSnapshot?.direccion || '')}<br>
+              NIF: ${esc(p.clienteSnapshot?.nif || '')}<br>
+              CP y ciudad: ${esc(p.clienteSnapshot?.cp || '')} ${esc(p.clienteSnapshot?.poblacion || '')}${p.clienteSnapshot?.provincia ? ` (${esc(p.clienteSnapshot.provincia)})` : ''}
+            </p>
+          </div>
+        </div>
+
+        <table class="factura-lineas">
+          <thead><tr><th>Concepto</th><th class="num">Cantidad</th><th class="num">Precio</th><th class="num">Importe</th></tr></thead>
+          <tbody>
+            ${p.lineas.map((l) => `<tr><td>${esc(l.concepto)}</td><td class="num">${l.cantidad}</td><td class="num">${fmtEUR(l.precio)}</td><td class="num">${fmtEUR(l.cantidad * l.precio)}</td></tr>`).join('')}
+          </tbody>
+        </table>
+
+        <div class="totales-caja">
+          <div class="totales">
+            <div class="linea-total">Base <span>${fmtEUR(p.base)}</span></div>
+            <div class="linea-total">IVA (${p.tipoIva}%) <span>${fmtEUR(p.cuotaIva)}</span></div>
+            <div class="linea-total">Retención IRPF (-${p.tipoIrpf}%) <span>-${fmtEUR(p.cuotaIrpf)}</span></div>
+            <div class="linea-total gran-total">Total <span>${fmtEUR(p.total)}</span></div>
+          </div>
+        </div>
+
+        ${p.notas ? `<p class="factura-nota">${esc(p.notas)}</p>` : ''}
+        <p class="factura-nota">Presupuesto sin valor de factura. Válido hasta el ${fmtFecha(p.validoHasta)}; los importes no incluyen posibles cambios de alcance acordados después.</p>
+      </div>
+    </article>
+  `;
+
+  document.getElementById('btn-imprimir').addEventListener('click', () => window.print());
+
+  async function cambiarEstado(nuevo) {
+    try { await api('POST', `/api/presupuestos/${p.id}/estado`, { estado: nuevo }); renderRuta(); }
+    catch (err) { alert(err.message); }
+  }
+  document.getElementById('btn-aceptar')?.addEventListener('click', () => cambiarEstado('aceptado'));
+  document.getElementById('btn-rechazar')?.addEventListener('click', () => cambiarEstado('rechazado'));
+
+  document.getElementById('btn-convertir')?.addEventListener('click', async () => {
+    if (!confirm(`¿Convertir el presupuesto ${p.numero} en factura? Se creará un borrador con las mismas líneas, pendiente de confirmar.`)) return;
+    try {
+      const factura = await api('POST', `/api/presupuestos/${p.id}/convertir`, {});
+      location.hash = `#/facturas/${factura.id}`;
+    } catch (err) { alert(err.message); }
+  });
+
+  document.getElementById('btn-borrar-presupuesto')?.addEventListener('click', async () => {
+    if (!confirm(`¿Borrar el presupuesto ${p.numero}? No se puede deshacer.`)) return;
+    try { await api('DELETE', `/api/presupuestos/${p.id}`); location.hash = '#/presupuestos'; }
+    catch (err) { alert(err.message); }
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Gastos
 // ---------------------------------------------------------------------------
 
 ruta('/gastos', async () => {
-  const anio = Number(new URLSearchParams(location.search).get('anio')) || anioActual();
+  const anio = Number(consultaRuta().get('anio')) || anioActual();
   const gastos = await api('GET', `/api/gastos?anio=${anio}`);
   gastos.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
   $contenido.innerHTML = `
@@ -838,7 +1176,7 @@ function trimestreActual() {
 }
 
 ruta('/impuestos', async () => {
-  const q = new URLSearchParams(location.search);
+  const q = consultaRuta();
   const anio = Number(q.get('anio')) || anioActual();
   const trimestre = Number(q.get('trimestre')) || trimestreActual();
 
@@ -965,6 +1303,14 @@ ruta('/ajustes', async () => {
         <label><input id="a-presenta130" type="checkbox" ${c.presenta130 ? 'checked' : ''}> Presenta modelo 130</label>
       </div>
 
+      <div class="bloque">
+        <h3>Presupuestos</h3>
+        <div class="fila-campos">
+          <div class="campo"><label for="a-serie-p">Serie</label><input id="a-serie-p" value="${esc(c.seriePresupuesto ?? 'P')}"></div>
+          <div class="campo"><label for="a-validez">Validez (días)</label><input id="a-validez" type="number" value="${c.validezDias ?? 30}"></div>
+        </div>
+      </div>
+
       <details class="avanzado">
         <summary>Ajustes avanzados</summary>
         <div class="fila-campos">
@@ -1003,6 +1349,7 @@ ruta('/ajustes', async () => {
           telefono: val('a-telefono'), iban: val('a-iban'), epigrafe: val('a-epigrafe'),
         },
         serie: val('a-serie'), serieRectificativa: val('a-serie-r'),
+        seriePresupuesto: val('a-serie-p'), validezDias: Number(val('a-validez')),
         tipoIva: Number(val('a-tipoiva')), tipoIrpf: Number(val('a-tipoirpf')),
         vencimientoDias: Number(val('a-vencimiento')),
         presenta130: document.getElementById('a-presenta130').checked,
