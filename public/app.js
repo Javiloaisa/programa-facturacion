@@ -373,6 +373,10 @@ function renderFormularioFactura(factura, plantilla = null, aviso = '') {
     : plantilla?.lineas?.length ? plantilla.lineas
     : [{ concepto: '', cantidad: 1, precio: 0 }];
   const clienteId = factura?.clienteId ?? plantilla?.clienteId;
+  // El selector de serie solo aparece si hay series adicionales en Ajustes.
+  const adicionales = c.seriesAdicionales || [];
+  const serieActual = factura?.serie ?? c.serie;
+  const opcionesSerie = [{ codigo: c.serie, nombre: 'principal' }, ...adicionales];
 
   $contenido.innerHTML = `
     <h2>${factura ? 'Editar borrador' : 'Nueva factura'}</h2>
@@ -389,6 +393,12 @@ function renderFormularioFactura(factura, plantilla = null, aviso = '') {
           <label for="ff-fecha">Fecha</label>
           <input id="ff-fecha" type="date" required value="${factura?.fecha || new Date().toISOString().slice(0, 10)}">
         </div>
+        ${adicionales.length ? `<div class="campo">
+          <label for="ff-serie">Serie</label>
+          <select id="ff-serie">
+            ${opcionesSerie.map((s) => `<option value="${esc(s.codigo)}" ${s.codigo === serieActual ? 'selected' : ''}>${esc(s.codigo)}${s.nombre ? ` · ${esc(s.nombre)}` : ''}</option>`).join('')}
+          </select>
+        </div>` : ''}
         <div class="campo">
           <label for="ff-iva">Tipo IVA %</label>
           <input id="ff-iva" type="number" step="0.01" value="${factura?.tipoIva ?? c.tipoIva}">
@@ -463,6 +473,7 @@ function renderFormularioFactura(factura, plantilla = null, aviso = '') {
     return {
       clienteId: document.getElementById('ff-cliente').value,
       fecha: document.getElementById('ff-fecha').value,
+      ...(document.getElementById('ff-serie') ? { serie: document.getElementById('ff-serie').value } : {}),
       tipoIva: Number(document.getElementById('ff-iva').value),
       tipoIrpf: Number(document.getElementById('ff-irpf').value),
       lineas,
@@ -1296,6 +1307,17 @@ function bloqueCasillas130(r) {
   return filas.map(([n, etiqueta, valor]) => filaCasilla(n, etiqueta, valor, n === '17')).join('');
 }
 
+function filaSerie(s) {
+  // Con facturas confirmadas, el código queda fijo y la fila no se puede quitar.
+  const usada = s.siguiente > 1;
+  return `<tr>
+    <td><input class="s-codigo" value="${esc(s.codigo)}" placeholder="B" ${usada ? 'readonly' : ''}></td>
+    <td><input class="s-nombre" value="${esc(s.nombre || '')}" placeholder="Para qué es esta serie"></td>
+    <td class="num">${s.siguiente}</td>
+    <td>${usada ? '' : '<button type="button" data-accion="quitar" aria-label="Quitar serie">×</button>'}</td>
+  </tr>`;
+}
+
 function filaCasilla(numero, etiqueta, valor, esResultado) {
   const aIngresar = esResultado && Number(valor) > 0;
   return `<div class="casilla">
@@ -1346,6 +1368,16 @@ ruta('/ajustes', async () => {
       </div>
 
       <div class="bloque">
+        <h3>Series adicionales</h3>
+        <p class="mensaje-info">Cada serie lleva su propia numeración (B-0001, B-0002…). Al hacer una factura eliges en qué serie va. Una serie con facturas confirmadas ya no se puede quitar.</p>
+        <table id="tabla-series">
+          <thead><tr><th>Código</th><th>Descripción</th><th class="num">Siguiente nº</th><th></th></tr></thead>
+          <tbody>${(c.seriesAdicionales || []).map(filaSerie).join('')}</tbody>
+        </table>
+        <p><button type="button" id="btn-add-serie">+ Añadir serie</button></p>
+      </div>
+
+      <div class="bloque">
         <h3>Presupuestos</h3>
         <div class="fila-campos">
           <div class="campo"><label for="a-serie-p">Serie</label><input id="a-serie-p" value="${esc(c.seriePresupuesto ?? 'P')}"></div>
@@ -1391,6 +1423,9 @@ ruta('/ajustes', async () => {
           telefono: val('a-telefono'), iban: val('a-iban'), epigrafe: val('a-epigrafe'),
         },
         serie: val('a-serie'), serieRectificativa: val('a-serie-r'),
+        seriesAdicionales: [...document.querySelectorAll('#tabla-series tbody tr')]
+          .map((tr) => ({ codigo: tr.querySelector('.s-codigo').value.trim(), nombre: tr.querySelector('.s-nombre').value.trim() }))
+          .filter((s) => s.codigo || s.nombre),
         seriePresupuesto: val('a-serie-p'), validezDias: Number(val('a-validez')),
         tipoIva: Number(val('a-tipoiva')), tipoIrpf: Number(val('a-tipoirpf')),
         vencimientoDias: Number(val('a-vencimiento')),
@@ -1406,6 +1441,15 @@ ruta('/ajustes', async () => {
   });
 
   function val(id) { return document.getElementById(id).value; }
+
+  const $series = document.querySelector('#tabla-series tbody');
+  document.getElementById('btn-add-serie').addEventListener('click', () => {
+    $series.insertAdjacentHTML('beforeend', filaSerie({ codigo: '', nombre: '', siguiente: 1 }));
+    $series.lastElementChild.querySelector('.s-codigo').focus();
+  });
+  $series.addEventListener('click', (e) => {
+    if (e.target.dataset.accion === 'quitar') e.target.closest('tr').remove();
+  });
 
   document.getElementById('btn-exportar').addEventListener('click', () => descargar('/api/exportar'));
   document.getElementById('btn-importar-elegir').addEventListener('click', () => document.getElementById('input-importar').click());

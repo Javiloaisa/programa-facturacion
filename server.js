@@ -62,6 +62,44 @@ function pad4(n) {
   return String(n).padStart(4, '0');
 }
 
+// Series de facturas ordinarias: la principal (config.serie, contador
+// siguienteNumero) y las adicionales, cada una con su propio contador.
+function seriesAdicionales(config) {
+  return config.seriesAdicionales || [];
+}
+
+// Serie con la que se numerara un borrador. Si el borrador apunta a una
+// serie adicional que ya no existe, o a una letra antigua de la principal,
+// se usa la principal.
+function serieDeBorrador(config, codigo) {
+  return seriesAdicionales(config).find((s) => s.codigo === codigo) || null;
+}
+
+function validarSerieElegida(config, codigo) {
+  if (codigo === undefined || codigo === null || codigo === '' || codigo === config.serie) return config.serie;
+  if (!serieDeBorrador(config, codigo)) throw new ErrorHttp(400, `La serie «${codigo}» no existe.`);
+  return codigo;
+}
+
+// Las series adicionales llegan de Ajustes como [{ codigo, nombre }]. Se
+// conserva el contador de las que ya existian; una serie con facturas
+// confirmadas no se puede quitar, porque romperia la numeracion.
+function fusionarSeriesAdicionales(config, entrantes) {
+  const actuales = seriesAdicionales(config);
+  const resultado = entrantes.map((e) => {
+    const codigo = typeof e?.codigo === 'string' ? e.codigo.trim() : '';
+    if (!codigo) throw new ErrorHttp(400, 'Cada serie adicional necesita un código.');
+    const previa = actuales.find((s) => s.codigo === codigo);
+    return { codigo, nombre: typeof e.nombre === 'string' ? e.nombre.trim() : '', siguiente: previa ? previa.siguiente : 1 };
+  });
+  for (const s of actuales) {
+    if (s.siguiente > 1 && !resultado.some((r) => r.codigo === s.codigo)) {
+      throw new ErrorHttp(400, `La serie ${s.codigo} ya tiene facturas confirmadas y no se puede quitar.`);
+    }
+  }
+  return resultado;
+}
+
 function sumarDias(fechaISO, dias) {
   const d = new Date(`${fechaISO}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + dias);
@@ -85,7 +123,9 @@ function validarLineas(lineas, que = 'La factura') {
 function comprobarIntegridadFacturas(facturas, config) {
   const confirmadas = facturas.filter((f) => f.estado === 'confirmada');
   const verificacion = fiscal.verificarCadena(confirmadas);
-  const numOrdinarias = confirmadas.filter((f) => f.tipo === 'F1').length;
+  const adicionales = seriesAdicionales(config);
+  const codigosAdicionales = new Set(adicionales.map((s) => s.codigo));
+  const numOrdinarias = confirmadas.filter((f) => f.tipo === 'F1' && !codigosAdicionales.has(f.serie)).length;
   const numRectificativas = confirmadas.filter((f) => f.tipo === 'R1').length;
 
   const motivos = [];
@@ -94,6 +134,12 @@ function comprobarIntegridadFacturas(facturas, config) {
     motivos.push(
       `Serie ${config.serie}: hay ${numOrdinarias} facturas confirmadas pero el contador espera ${config.siguienteNumero - 1}.`
     );
+  }
+  for (const s of adicionales) {
+    const num = confirmadas.filter((f) => f.tipo === 'F1' && f.serie === s.codigo).length;
+    if (num !== s.siguiente - 1) {
+      motivos.push(`Serie ${s.codigo}: hay ${num} facturas confirmadas pero el contador espera ${s.siguiente - 1}.`);
+    }
   }
   if (numRectificativas !== config.siguienteRectificativa - 1) {
     motivos.push(
@@ -363,7 +409,7 @@ function registrarRutas(router, { store, estado, revisarIntegridad }) {
     const factura = {
       id: crypto.randomUUID(),
       orden: null,
-      serie: config.serie,
+      serie: validarSerieElegida(config, body.serie),
       numero: null,
       fecha: body.fecha,
       fechaVencimiento: sumarDias(body.fecha, config.vencimientoDias),
@@ -408,6 +454,9 @@ function registrarRutas(router, { store, estado, revisarIntegridad }) {
       const tipoIrpf = body.tipoIrpf ?? actual.tipoIrpf;
       const fecha = body.fecha ?? actual.fecha;
       const calculo = fiscal.calcularFactura({ lineas, tipoIva, tipoIrpf });
+      const serie = body.serie !== undefined && actual.tipo === 'F1'
+        ? validarSerieElegida(config, body.serie)
+        : actual.serie;
 
       let clienteSnapshot = actual.clienteSnapshot;
       let clienteId = actual.clienteId;
@@ -423,6 +472,7 @@ function registrarRutas(router, { store, estado, revisarIntegridad }) {
         ...actual,
         clienteId,
         clienteSnapshot,
+        serie,
         fecha,
         fechaVencimiento: sumarDias(fecha, config.vencimientoDias),
         lineas,
@@ -455,9 +505,15 @@ function registrarRutas(router, { store, estado, revisarIntegridad }) {
 
       await store.actualizar('config', (config) => {
         const esRectificativa = actual.tipo === 'R1';
-        const campoContador = esRectificativa ? 'siguienteRectificativa' : 'siguienteNumero';
-        const serieUsar = esRectificativa ? config.serieRectificativa : config.serie;
-        const numeroActual = config[campoContador];
+        const adicional = esRectificativa ? null : serieDeBorrador(config, actual.serie);
+        // El contador es la propiedad `siguiente` de la serie adicional, o el
+        // campo de config de la principal o la rectificativa.
+        const contador = adicional || config;
+        const campoContador = adicional ? 'siguiente'
+          : esRectificativa ? 'siguienteRectificativa' : 'siguienteNumero';
+        const serieUsar = adicional ? adicional.codigo
+          : esRectificativa ? config.serieRectificativa : config.serie;
+        const numeroActual = contador[campoContador];
 
         const confirmadas = facturas.filter((f) => f.estado === 'confirmada');
         const ultimaOrden = confirmadas.reduce((max, f) => Math.max(max, f.orden || 0), 0);
@@ -478,7 +534,7 @@ function registrarRutas(router, { store, estado, revisarIntegridad }) {
         candidata.huella = fiscal.huellaFactura(candidata, huellaAnterior);
 
         facturaConfirmada = candidata;
-        config[campoContador] = numeroActual + 1;
+        contador[campoContador] = numeroActual + 1;
         return config;
       });
 
@@ -953,6 +1009,9 @@ function registrarRutas(router, { store, estado, revisarIntegridad }) {
   router.put('/api/config', async (req, res) => {
     const body = await leerJSON(req);
     const nuevo = await store.actualizar('config', (config) => {
+      if (Array.isArray(body.seriesAdicionales)) {
+        config.seriesAdicionales = fusionarSeriesAdicionales(config, body.seriesAdicionales);
+      }
       if (body.emisor) config.emisor = { ...config.emisor, ...body.emisor };
       if (typeof body.serie === 'string') config.serie = body.serie;
       if (typeof body.serieRectificativa === 'string') config.serieRectificativa = body.serieRectificativa;
@@ -963,6 +1022,11 @@ function registrarRutas(router, { store, estado, revisarIntegridad }) {
       if (typeof body.presenta130 === 'boolean') config.presenta130 = body.presenta130;
       if (Number.isFinite(body.vencimientoDias)) config.vencimientoDias = body.vencimientoDias;
       if (body.avanzado) config.avanzado = { ...config.avanzado, ...body.avanzado };
+      const codigos = [config.serie, config.serieRectificativa, config.seriePresupuesto || 'P',
+        ...seriesAdicionales(config).map((s) => s.codigo)];
+      if (new Set(codigos).size !== codigos.length) {
+        throw new ErrorHttp(400, 'Cada serie (ordinaria, rectificativa, presupuestos y adicionales) necesita un código distinto.');
+      }
       return config;
       // Los contadores (siguienteNumero, siguienteRectificativa,
       // siguientePresupuesto) no se tocan aqui: solo los avanza el acto que

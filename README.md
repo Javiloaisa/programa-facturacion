@@ -10,6 +10,15 @@ siempre el mismo estado.
 El encargo original está en [encargo-facturacion.md](encargo-facturacion.md)
 y todas las decisiones de arquitectura, con su porqué, en [PLAN.md](PLAN.md).
 
+## Series adicionales
+
+Además de la serie principal (`A`) y la rectificativa (`R`), en Ajustes se
+pueden crear series de facturas adicionales (`B`, `C`…), cada una con su
+propio contador desde 0001. En la factura se elige la serie (el selector solo
+aparece si hay alguna adicional) y el número se asigna al confirmar. Una serie
+con facturas confirmadas no se puede quitar ni cambiar de código. Las
+rectificativas de cualquier serie van todas a la serie `R`.
+
 ## Presupuestos
 
 Añadidos después del encargo. Un presupuesto **no es un documento fiscal**:

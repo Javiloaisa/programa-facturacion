@@ -657,3 +657,75 @@ describe('API — presupuestos', () => {
     assert.equal(Number(m303.body.casillas['07'] || 0), 0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Series adicionales: cada una con su contador, elegida en cada factura.
+// ---------------------------------------------------------------------------
+
+describe('API — series adicionales', () => {
+  let ctx;
+  let cliente;
+  const lineas = [{ concepto: 'Trabajo', cantidad: 1, precio: 100 }];
+
+  before(async () => {
+    ctx = await levantarApp({ auth: auth.crearAuth(PASSWORD) });
+    cliente = crearCliente(ctx.port);
+    await cliente.peticion('POST', '/api/login', { password: PASSWORD });
+    await cliente.peticion('POST', '/api/clientes/cs', { nombre: 'Series', nif: '11111111A' });
+  });
+
+  after(async () => {
+    await ctx.cerrar();
+  });
+
+  async function facturaConfirmada(serie) {
+    const b = await cliente.peticion('POST', '/api/facturas', { clienteId: 'cs', fecha: '2026-05-01', lineas, serie });
+    assert.equal(b.status, 201);
+    return cliente.peticion('POST', `/api/facturas/${b.body.id}/confirmar`, null);
+  }
+
+  test('una serie adicional numera desde 0001 sin tocar la principal', async () => {
+    const r = await cliente.peticion('PUT', '/api/config', { seriesAdicionales: [{ codigo: 'B', nombre: 'Mantenimiento' }] });
+    assert.equal(r.status, 200);
+    assert.deepEqual(r.body.seriesAdicionales, [{ codigo: 'B', nombre: 'Mantenimiento', siguiente: 1 }]);
+
+    assert.equal((await facturaConfirmada()).body.numero, 'A-0001');
+    assert.equal((await facturaConfirmada('B')).body.numero, 'B-0001');
+    assert.equal((await facturaConfirmada('B')).body.numero, 'B-0002');
+    assert.equal((await facturaConfirmada('A')).body.numero, 'A-0002');
+
+    const config = await cliente.peticion('GET', '/api/config');
+    assert.equal(config.body.siguienteNumero, 3);
+    assert.equal(config.body.seriesAdicionales[0].siguiente, 3);
+    assert.equal(ctx.app.estado.soloLectura, false, 'la integridad cuenta cada serie por separado');
+  });
+
+  test('cambiar la serie de un borrador al editarlo', async () => {
+    const b = await cliente.peticion('POST', '/api/facturas', { clienteId: 'cs', fecha: '2026-05-02', lineas });
+    const editado = await cliente.peticion('PUT', `/api/facturas/${b.body.id}`, { serie: 'B' });
+    assert.equal(editado.body.serie, 'B');
+    const c = await cliente.peticion('POST', `/api/facturas/${b.body.id}/confirmar`, null);
+    assert.equal(c.body.numero, 'B-0003');
+  });
+
+  test('una serie inexistente se rechaza', async () => {
+    const r = await cliente.peticion('POST', '/api/facturas', { clienteId: 'cs', fecha: '2026-05-01', lineas, serie: 'Z' });
+    assert.equal(r.status, 400);
+  });
+
+  test('no se puede quitar una serie con facturas ni repetir códigos', async () => {
+    const quitar = await cliente.peticion('PUT', '/api/config', { seriesAdicionales: [] });
+    assert.equal(quitar.status, 400);
+    const repetida = await cliente.peticion('PUT', '/api/config', {
+      seriesAdicionales: [{ codigo: 'B' }, { codigo: 'A' }],
+    });
+    assert.equal(repetida.status, 400);
+
+    const añadir = await cliente.peticion('PUT', '/api/config', {
+      seriesAdicionales: [{ codigo: 'B', nombre: 'Mantenimiento' }, { codigo: 'C' }],
+    });
+    assert.equal(añadir.status, 200);
+    assert.equal(añadir.body.seriesAdicionales[0].siguiente, 4, 'conserva el contador de B');
+    assert.equal(añadir.body.seriesAdicionales[1].siguiente, 1);
+  });
+});
