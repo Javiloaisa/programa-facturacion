@@ -359,8 +359,10 @@ ruta('/facturas/:id', async ({ id }) => {
   const facturas = await api('GET', '/api/facturas');
   const factura = facturas.find((f) => f.id === id);
   if (!factura) { $contenido.innerHTML = '<p class="mensaje-error">Factura no encontrada.</p>'; return; }
-  if (factura.estado === 'borrador') renderFormularioFactura(factura);
-  else renderDetalleFactura(factura);
+  if (factura.estado === 'borrador') { renderFormularioFactura(factura); return; }
+  // Solo la última confirmada se puede devolver a borrador (no deja huecos).
+  const ultimaOrden = facturas.reduce((max, f) => Math.max(max, f.orden || 0), 0);
+  renderDetalleFactura(factura, factura.orden === ultimaOrden);
 });
 
 function renderFormularioFactura(factura, plantilla = null, aviso = '') {
@@ -430,6 +432,7 @@ function renderFormularioFactura(factura, plantilla = null, aviso = '') {
         <button type="submit" class="primario" ${estado.soloLectura ? 'disabled' : ''}>Guardar borrador <span class="atajo">(Ctrl+S)</span></button>
         ${factura ? `<button type="button" id="btn-confirmar-factura" data-id="${factura.id}" ${estado.soloLectura ? 'disabled' : ''}>Confirmar y numerar</button>` : ''}
         <a href="#/facturas">Cancelar <span class="atajo">(Esc)</span></a>
+        ${factura && !estado.soloLectura ? `<div class="espaciador"></div><button type="button" id="btn-borrar-factura">Borrar borrador</button>` : ''}
       </div>
     </form>
   `;
@@ -449,6 +452,11 @@ function renderFormularioFactura(factura, plantilla = null, aviso = '') {
   // renders (solo se reemplaza su innerHTML), así que volver a esta ruta
   // varias veces iría acumulando un listener por visita.
   document.getElementById('form-factura').addEventListener('input', actualizarPreview);
+  document.getElementById('btn-borrar-factura')?.addEventListener('click', async () => {
+    if (!confirm('¿Borrar este borrador de factura? No se puede deshacer.')) return;
+    try { await api('DELETE', `/api/facturas/${factura.id}`); location.hash = '#/facturas'; }
+    catch (err) { alert(err.message); }
+  });
 
   async function actualizarPreview() {
     try {
@@ -510,12 +518,13 @@ function mostrarErrorFormulario(err) {
   $contenido.querySelector('form')?.insertAdjacentHTML('afterbegin', `<p class="mensaje-error">${esc(err.message)}</p>`);
 }
 
-function renderDetalleFactura(f) {
+function renderDetalleFactura(f, esUltima = false) {
   const emisor = estado.config?.emisor || {};
   $contenido.innerHTML = `
     <div class="barra-acciones no-imprimir">
       <a href="#/facturas">← Volver</a>
       <div class="espaciador"></div>
+      ${f.estado === 'confirmada' && esUltima && !estado.soloLectura ? `<button id="btn-desconfirmar">Deshacer confirmación</button>` : ''}
       ${f.estado === 'confirmada' && !f.cobrada && !estado.soloLectura ? `<button id="btn-cobrar">Marcar cobrada</button>` : ''}
       ${f.estado === 'confirmada' && f.tipo !== 'R1' && !estado.soloLectura ? `<button id="btn-rectificar">Rectificar</button>` : ''}
       <button id="btn-imprimir" class="primario">Imprimir</button>
@@ -581,6 +590,11 @@ function renderDetalleFactura(f) {
     const fecha = prompt('Fecha de cobro (AAAA-MM-DD):', new Date().toISOString().slice(0, 10));
     if (!fecha) return;
     try { await api('POST', `/api/facturas/${f.id}/cobrar`, { fecha }); renderRuta(); }
+    catch (err) { alert(err.message); }
+  });
+  document.getElementById('btn-desconfirmar')?.addEventListener('click', async () => {
+    if (!confirm(`¿Deshacer la confirmación de la factura ${f.numero}? Volverá a ser un borrador (que podrás corregir o borrar) y el número ${f.numero} quedará libre para la siguiente.`)) return;
+    try { await api('POST', `/api/facturas/${f.id}/desconfirmar`, null); renderRuta(); }
     catch (err) { alert(err.message); }
   });
   document.getElementById('btn-rectificar')?.addEventListener('click', async () => {

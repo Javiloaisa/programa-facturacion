@@ -729,3 +729,69 @@ describe('API — series adicionales', () => {
     assert.equal(añadir.body.seriesAdicionales[1].siguiente, 1);
   });
 });
+
+describe('API — deshacer la confirmación y borrar borradores', () => {
+  let ctx;
+  let cliente;
+  const lineas = [{ concepto: 'Trabajo', cantidad: 1, precio: 100 }];
+
+  before(async () => {
+    ctx = await levantarApp({ auth: auth.crearAuth(PASSWORD) });
+    cliente = crearCliente(ctx.port);
+    await cliente.peticion('POST', '/api/login', { password: PASSWORD });
+    await cliente.peticion('POST', '/api/clientes/cd', { nombre: 'Deshacer', nif: '22222222B' });
+  });
+
+  after(async () => {
+    await ctx.cerrar();
+  });
+
+  async function confirmada(fecha = '2026-06-01') {
+    const b = await cliente.peticion('POST', '/api/facturas', { clienteId: 'cd', fecha, lineas });
+    return (await cliente.peticion('POST', `/api/facturas/${b.body.id}/confirmar`, null)).body;
+  }
+
+  test('solo la última confirmada vuelve a borrador y libera su número', async () => {
+    const primera = await confirmada();
+    const segunda = await confirmada();
+    assert.equal(segunda.numero, 'A-0002');
+
+    const noUltima = await cliente.peticion('POST', `/api/facturas/${primera.id}/desconfirmar`, null);
+    assert.equal(noUltima.status, 409);
+
+    const r = await cliente.peticion('POST', `/api/facturas/${segunda.id}/desconfirmar`, null);
+    assert.equal(r.status, 200);
+    assert.equal(r.body.estado, 'borrador');
+    assert.equal(r.body.numero, null);
+    assert.equal(ctx.app.estado.soloLectura, false, 'la cadena y el contador siguen cuadrando');
+
+    const otra = await cliente.peticion('POST', `/api/facturas/${segunda.id}/confirmar`, null);
+    assert.equal(otra.body.numero, 'A-0002', 'el número vuelve a usarse sin hueco');
+  });
+
+  test('una factura con rectificativa no se puede deshacer', async () => {
+    const f = await confirmada();
+    const rect = await cliente.peticion('POST', `/api/facturas/${f.id}/rectificar`, { tipo: 'total' });
+    const r = await cliente.peticion('POST', `/api/facturas/${f.id}/desconfirmar`, null);
+    assert.equal(r.status, 409);
+    assert.equal((await cliente.peticion('DELETE', `/api/facturas/${rect.body.id}`)).status, 200);
+    assert.equal((await cliente.peticion('POST', `/api/facturas/${f.id}/desconfirmar`, null)).status, 200);
+  });
+
+  test('con el trimestre ya presentado no se puede deshacer', async () => {
+    const f = await confirmada('2026-02-01');
+    await cliente.peticion('POST', '/api/impuestos/303/presentar', { anio: 2026, trimestre: 1 });
+    const r = await cliente.peticion('POST', `/api/facturas/${f.id}/desconfirmar`, null);
+    assert.equal(r.status, 409);
+  });
+
+  test('un borrador se borra; una confirmada no', async () => {
+    const b = await cliente.peticion('POST', '/api/facturas', { clienteId: 'cd', fecha: '2026-06-02', lineas });
+    assert.equal((await cliente.peticion('DELETE', `/api/facturas/${b.body.id}`)).status, 200);
+    const lista = await cliente.peticion('GET', '/api/facturas');
+    assert.ok(!lista.body.some((f) => f.id === b.body.id));
+
+    const f = lista.body.find((x) => x.estado === 'confirmada');
+    assert.equal((await cliente.peticion('DELETE', `/api/facturas/${f.id}`)).status, 409);
+  });
+});

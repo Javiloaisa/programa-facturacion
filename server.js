@@ -545,6 +545,86 @@ function registrarRutas(router, { store, estado, revisarIntegridad }) {
     enviarJSON(res, 200, facturaConfirmada);
   });
 
+  // Deshacer la confirmación: solo la ÚLTIMA factura de la cadena, para
+  // corregir un error recién cometido. Vuelve a borrador y su número queda
+  // libre; como es la última, no deja hueco ni rompe la cadena de huellas.
+  // Cualquier otra confirmada se corrige con una rectificativa (regla §4.2).
+  router.post('/api/facturas/:id/desconfirmar', async (req, res, ctx, { id }) => {
+    exigirEscritura();
+    const presentaciones = await store.leer('presentaciones');
+
+    let facturaDeshecha = null;
+    await store.actualizar('facturas', async (facturas) => {
+      const idx = facturas.findIndex((f) => f.id === id);
+      if (idx === -1) throw new ErrorHttp(404, 'Factura no encontrada.');
+      const actual = facturas[idx];
+      if (actual.estado !== 'confirmada') throw new ErrorHttp(409, 'Esta factura no está confirmada.');
+      const ultimaOrden = facturas
+        .filter((f) => f.estado === 'confirmada')
+        .reduce((max, f) => Math.max(max, f.orden || 0), 0);
+      if (actual.orden !== ultimaOrden) {
+        throw new ErrorHttp(409, 'Solo se puede deshacer la última factura confirmada. Para esta, emite una rectificativa.');
+      }
+      if (facturas.some((f) => f.rectificaA === id)) {
+        throw new ErrorHttp(409, 'Esta factura tiene una rectificativa; borra antes ese borrador.');
+      }
+      const periodo = { anio: Number(actual.fecha.slice(0, 4)), trimestre: fiscal.trimestreDe(actual.fecha) };
+      if (presentaciones.some((p) => comparaPeriodo(p, periodo) >= 0)) {
+        throw new ErrorHttp(409, 'Ya hay un modelo presentado de este trimestre o posterior que incluye esta factura.');
+      }
+
+      await store.actualizar('config', (config) => {
+        const esRectificativa = actual.tipo === 'R1';
+        const adicional = esRectificativa ? null : serieDeBorrador(config, actual.serie);
+        const contador = adicional || config;
+        const campoContador = adicional ? 'siguiente'
+          : esRectificativa ? 'siguienteRectificativa' : 'siguienteNumero';
+        if (actual.numero !== `${actual.serie}-${pad4(contador[campoContador] - 1)}`) {
+          throw new ErrorHttp(409, 'El número de la factura no es el último de su serie.');
+        }
+        contador[campoContador] -= 1;
+        return config;
+      });
+
+      facturaDeshecha = {
+        ...actual,
+        estado: 'borrador',
+        serie: actual.tipo === 'R1' ? null : actual.serie,
+        numero: null,
+        orden: null,
+        nifEmisor: null,
+        generadaEn: null,
+        huellaAnterior: null,
+        huella: null,
+        cobrada: false,
+        fechaCobro: null,
+      };
+      facturas[idx] = facturaDeshecha;
+      return facturas;
+    });
+    await revisarIntegridad();
+    enviarJSON(res, 200, facturaDeshecha);
+  });
+
+  // Un borrador no tiene número ni efectos fiscales: se puede borrar. Si
+  // venía de un presupuesto, el presupuesto vuelve a poder convertirse.
+  router.del('/api/facturas/:id', async (req, res, ctx, { id }) => {
+    exigirEscritura();
+    await store.actualizar('facturas', (facturas) => {
+      const idx = facturas.findIndex((f) => f.id === id);
+      if (idx === -1) throw new ErrorHttp(404, 'Factura no encontrada.');
+      if (facturas[idx].estado !== 'borrador') {
+        throw new ErrorHttp(409, 'Una factura confirmada no se borra: deshaz la confirmación o emite una rectificativa.');
+      }
+      facturas.splice(idx, 1);
+      return facturas;
+    });
+    await store.actualizar('presupuestos', (lista) =>
+      lista.map((p) => (p.facturaId === id ? { ...p, facturaId: null } : p))
+    );
+    enviarJSON(res, 200, { ok: true });
+  });
+
   router.post('/api/facturas/:id/rectificar', async (req, res, ctx, { id }) => {
     exigirEscritura();
     const body = await leerJSON(req);
