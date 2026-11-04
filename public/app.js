@@ -573,51 +573,72 @@ document.addEventListener('click', async (ev) => {
 // Clientes (accesible desde Facturas; no lleva entrada propia en la nav).
 // ---------------------------------------------------------------------------
 
-ruta('/clientes', async () => {
+ruta('/clientes', async () => renderClientes(null));
+ruta('/clientes/:id', async ({ id }) => renderClientes(id));
+
+// Alta y edición comparten formulario: con `editarId` se rellena con ese
+// cliente y se guarda con PUT sobre el mismo id. Las facturas ya emitidas no
+// cambian (guardan su propia copia del cliente, clienteSnapshot).
+async function renderClientes(editarId) {
   const clientes = await api('GET', `/api/clientes?anio=${anioActual()}`);
+  const editando = editarId ? clientes.find((c) => c.id === editarId) : null;
+  if (editarId && !editando) { $contenido.innerHTML = '<p class="mensaje-error">Cliente no encontrado.</p>'; return; }
+  const v = (campo) => esc(editando?.[campo] ?? '');
   $contenido.innerHTML = `
     <h2>Clientes</h2>
     <div class="barra-acciones"><a href="#/facturas">← Volver a facturas</a></div>
     <div class="bloque">
-      <h3>Nuevo cliente</h3>
+      <h3>${editando ? `Editar cliente: ${esc(editando.nombre)}` : 'Nuevo cliente'}</h3>
       <form id="form-cliente">
         <div class="fila-campos">
-          <div class="campo"><label for="c-nombre">Nombre</label><input id="c-nombre" required></div>
-          <div class="campo"><label for="c-nif">NIF</label><input id="c-nif" required></div>
+          <div class="campo"><label for="c-nombre">Nombre</label><input id="c-nombre" required value="${v('nombre')}"></div>
+          <div class="campo"><label for="c-nif">NIF</label><input id="c-nif" required value="${v('nif')}"></div>
         </div>
         <div class="fila-campos">
-          <div class="campo"><label for="c-direccion">Dirección</label><input id="c-direccion"></div>
-          <div class="campo"><label for="c-cp">CP</label><input id="c-cp"></div>
-          <div class="campo"><label for="c-poblacion">Población</label><input id="c-poblacion"></div>
-          <div class="campo"><label for="c-provincia">Provincia</label><input id="c-provincia"></div>
+          <div class="campo"><label for="c-direccion">Dirección</label><input id="c-direccion" value="${v('direccion')}"></div>
+          <div class="campo"><label for="c-cp">CP</label><input id="c-cp" value="${v('cp')}"></div>
+          <div class="campo"><label for="c-poblacion">Población</label><input id="c-poblacion" value="${v('poblacion')}"></div>
+          <div class="campo"><label for="c-provincia">Provincia</label><input id="c-provincia" value="${v('provincia')}"></div>
         </div>
         <div class="fila-campos">
-          <div class="campo"><label for="c-email">Email</label><input id="c-email" type="email"></div>
+          <div class="campo"><label for="c-email">Email</label><input id="c-email" type="email" value="${v('email')}"></div>
           <div class="campo campo-final">
-            <label><input id="c-vies" type="checkbox"> Intracomunitario (VIES)</label>
+            <label><input id="c-vies" type="checkbox" ${editando?.vies ? 'checked' : ''}> Intracomunitario (VIES)</label>
           </div>
         </div>
         <p class="mensaje-info">La exención intracomunitaria todavía no se aplica automáticamente aunque marques VIES (fuera de alcance mientras no se dé de alta en el ROI).</p>
-        <button type="submit" class="primario">Guardar cliente</button>
+        ${editando ? '<p class="mensaje-info">Los cambios se aplican a las facturas nuevas; las ya emitidas conservan los datos con los que se emitieron.</p>' : ''}
+        <div class="barra-acciones">
+          <button type="submit" class="primario">${editando ? 'Guardar cambios' : 'Guardar cliente'}</button>
+          ${editando ? '<a href="#/clientes">Cancelar</a>' : ''}
+        </div>
       </form>
     </div>
     ${clientes.length === 0 ? '<div class="estado-vacio">Todavía no hay clientes. Da de alta el primero con el formulario de arriba.</div>' : `
-    <div class="tabla-envoltorio"><table>
-      <thead><tr><th>Nombre</th><th>NIF</th><th>Población</th><th class="num">Total ${anioActual()}</th><th></th></tr></thead>
+    <div class="tabla-envoltorio"><table class="tabla-clientes">
+      <thead><tr><th>Nombre</th><th>NIF</th><th>Población</th><th class="num">Total ${anioActual()}</th><th></th><th></th></tr></thead>
       <tbody>
         ${clientes.map((c) => `<tr>
-          <td>${esc(c.nombre)}</td><td>${esc(c.nif)}</td><td>${esc(c.poblacion)}</td>
-          <td class="num">${fmtEUR(c.totalAnio)}</td>
-          <td>${c.aviso347 ? '<span class="etiqueta pendiente">aviso 347</span>' : ''}</td>
+          <td class="c-nombre">${esc(c.nombre)}</td><td class="c-nif">${esc(c.nif)}</td><td class="c-poblacion">${esc(c.poblacion)}</td>
+          <td class="num c-total">${fmtEUR(c.totalAnio)}</td>
+          <td class="c-aviso">${c.aviso347 ? '<span class="etiqueta pendiente">aviso 347</span>' : ''}</td>
+          <td class="c-acciones"><a class="boton-enlace" href="#/clientes/${c.id}">Editar</a></td>
         </tr>`).join('')}
       </tbody>
     </table></div>`}
   `;
+  if (editando) document.getElementById('c-nombre').focus();
   document.getElementById('form-cliente').addEventListener('submit', async (ev) => {
     ev.preventDefault();
-    const id = crypto.randomUUID();
+    const id = editando ? editando.id : crypto.randomUUID();
+    const vies = document.getElementById('c-vies').checked;
     try {
-      await api('POST', `/api/clientes/${id}`, {
+      await api(editando ? 'PUT' : 'POST', `/api/clientes/${id}`, {
+        // El servidor sustituye el cliente entero: se conservan los campos
+        // que este formulario no muestra.
+        pais: editando?.pais,
+        notas: editando?.notas,
+        activo: editando?.activo,
         nombre: document.getElementById('c-nombre').value,
         nif: document.getElementById('c-nif').value,
         direccion: document.getElementById('c-direccion').value,
@@ -625,14 +646,14 @@ ruta('/clientes', async () => {
         poblacion: document.getElementById('c-poblacion').value,
         provincia: document.getElementById('c-provincia').value,
         email: document.getElementById('c-email').value,
-        vies: document.getElementById('c-vies').checked,
-        intracomunitario: document.getElementById('c-vies').checked,
+        vies,
+        intracomunitario: vies,
       });
       estado.clientes = await api('GET', '/api/clientes');
-      renderRuta();
+      irA('#/clientes');
     } catch (err) { mostrarErrorFormulario(err); }
   });
-});
+}
 
 // ---------------------------------------------------------------------------
 // Presupuestos

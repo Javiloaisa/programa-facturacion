@@ -58,7 +58,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   outline-offset: 1px;
 }
 
-input, select, textarea {
+input:not([type=checkbox]), select, textarea {
   border: 1px solid var(--borde);
   border-radius: var(--radio);
   padding: 0.35em 0.5em;
@@ -330,7 +330,8 @@ details.avanzado summary { cursor: pointer; font-weight: 600; padding: 0.4em 0; 
 
 @media screen and (max-width: 60em) {
   /* 16px evita que Safari en iPhone haga zoom al tocar un campo. */
-  input, select, textarea { font-size: 16px; min-height: 44px; }
+  input:not([type=checkbox]), select, textarea { font-size: 16px; min-height: 44px; }
+  input[type=checkbox] { width: 22px; height: 22px; vertical-align: middle; }
   button, .boton-enlace { min-height: 44px; }
   .boton-enlace { display: inline-flex; align-items: center; }
 
@@ -379,6 +380,34 @@ details.avanzado summary { cursor: pointer; font-weight: 600; padding: 0.4em 0; 
   /* Cobro (facturas) o "válido hasta" (presupuestos), junto al estado. */
   .tabla-lista .c-extra { grid-column: 2; grid-row: 4; text-align: right; color: var(--texto-suave); font-size: 0.85em; }
   .tabla-lista .c-extra:empty { display: none; }
+
+  /* Clientes: tarjeta con el botón Editar siempre a la vista. */
+  .tabla-clientes thead { display: none; }
+  .tabla-clientes, .tabla-clientes tbody { display: block; background: none; }
+  .tabla-clientes tr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "nombre acciones"
+      "datos acciones"
+      "total aviso";
+    gap: 0.2em 0.75em;
+    align-items: center;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    padding: 0.75em 0.9em;
+    margin-bottom: 0.5em;
+  }
+  .tabla-clientes tr:hover { background: var(--superficie); }
+  .tabla-clientes td { padding: 0; border: none; }
+  .tabla-clientes .c-nombre { grid-area: nombre; font-weight: 600; }
+  .tabla-clientes .c-nif { grid-area: datos; color: var(--texto-suave); font-size: 0.9em; }
+  .tabla-clientes .c-poblacion { display: none; }
+  .tabla-clientes .c-total { grid-area: total; text-align: left; color: var(--texto-suave); font-size: 0.9em; }
+  .tabla-clientes .c-aviso { grid-area: aviso; text-align: right; }
+  .tabla-clientes .c-aviso:empty { display: none; }
+  .tabla-clientes .c-acciones { grid-area: acciones; }
 
   /* Editor de líneas: concepto a todo el ancho; cantidad, precio y quitar debajo. */
   #tabla-lineas thead { display: none; }
