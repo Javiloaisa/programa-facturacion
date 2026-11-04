@@ -284,7 +284,7 @@ ruta('/facturas', async () => {
       </label>
       <div class="espaciador"></div>
       <button type="button" id="btn-clientes">Clientes</button>
-      <button type="button" class="primario" id="btn-nueva">Nueva factura (n)</button>
+      <button type="button" class="primario" id="btn-nueva">Nueva factura <span class="atajo">(n)</span></button>
     </div>
     ${facturas.length === 0
       ? `<div class="estado-vacio">Todavía no hay facturas en este período. Crea la primera con «Nueva factura».</div>`
@@ -315,20 +315,20 @@ function opcionesAnios(seleccionado) {
 
 function tablaFacturas(facturas) {
   return `
-  <div class="tabla-envoltorio"><table>
+  <div class="tabla-envoltorio"><table class="tabla-lista">
     <thead><tr>
       <th>Fecha</th><th>Número</th><th>Cliente</th><th class="num">Base</th><th class="num">Total</th><th>Estado</th><th>Cobro</th>
     </tr></thead>
     <tbody>
       ${facturas.map((f) => `
         <tr data-id="${f.id}" tabindex="0">
-          <td>${fmtFecha(f.fecha)}</td>
-          <td>${esc(f.numero || '(borrador)')}</td>
-          <td>${esc(f.clienteSnapshot?.nombre || '')}</td>
-          <td class="num">${fmtEUR(f.base)}</td>
-          <td class="num">${fmtEUR(f.total)}</td>
-          <td><span class="etiqueta ${f.estado}">${f.estado === 'confirmada' ? 'confirmada' : 'borrador'}</span></td>
-          <td>${f.estado !== 'confirmada' ? '' : `<span class="etiqueta ${f.cobrada ? 'cobrada' : 'pendiente'}">${f.cobrada ? 'cobrada' : 'pendiente'}</span>`}</td>
+          <td class="c-fecha">${fmtFecha(f.fecha)}</td>
+          <td class="c-numero">${esc(f.numero || '(borrador)')}</td>
+          <td class="c-cliente">${esc(f.clienteSnapshot?.nombre || '')}</td>
+          <td class="num c-base">${fmtEUR(f.base)}</td>
+          <td class="num c-total">${fmtEUR(f.total)}</td>
+          <td class="c-estado"><span class="etiqueta ${f.estado}">${f.estado === 'confirmada' ? 'confirmada' : 'borrador'}</span></td>
+          <td class="c-extra">${f.estado !== 'confirmada' ? '' : `<span class="etiqueta ${f.cobrada ? 'cobrada' : 'pendiente'}">${f.cobrada ? 'cobrada' : 'pendiente'}</span>`}</td>
         </tr>`).join('')}
     </tbody>
   </table></div>`;
@@ -396,9 +396,9 @@ function renderFormularioFactura(factura) {
       </div>
 
       <div class="barra-acciones">
-        <button type="submit" class="primario" ${estado.soloLectura ? 'disabled' : ''}>Guardar borrador (Ctrl+S)</button>
+        <button type="submit" class="primario" ${estado.soloLectura ? 'disabled' : ''}>Guardar borrador <span class="atajo">(Ctrl+S)</span></button>
         ${factura ? `<button type="button" id="btn-confirmar-factura" data-id="${factura.id}" ${estado.soloLectura ? 'disabled' : ''}>Confirmar y numerar</button>` : ''}
-        <a href="#/facturas">Cancelar (Esc)</a>
+        <a href="#/facturas">Cancelar <span class="atajo">(Esc)</span></a>
       </div>
     </form>
   `;
@@ -465,7 +465,7 @@ function renderFormularioFactura(factura) {
 
 function filaLinea(l) {
   return `<tr>
-    <td><input class="l-concepto" value="${esc(l.concepto)}" required></td>
+    <td><input class="l-concepto" value="${esc(l.concepto)}" placeholder="Concepto" aria-label="Concepto" required></td>
     <td class="num"><input class="l-cantidad" type="number" step="0.01" value="${l.cantidad}"></td>
     <td class="num"><input class="l-precio" type="number" step="0.01" value="${l.precio}"></td>
     <td><button type="button" data-accion="quitar" aria-label="Quitar línea">×</button></td>
@@ -670,7 +670,7 @@ ruta('/presupuestos', async () => {
         </select>
       </label>
       <div class="espaciador"></div>
-      <button type="button" class="primario" id="btn-nuevo-presupuesto">Nuevo presupuesto (n)</button>
+      <button type="button" class="primario" id="btn-nuevo-presupuesto">Nuevo presupuesto <span class="atajo">(n)</span></button>
     </div>
     ${presupuestos.length === 0
       ? `<div class="estado-vacio">Todavía no hay presupuestos en este período. Crea el primero con «Nuevo presupuesto».</div>`
@@ -706,20 +706,20 @@ function etiquetaPresupuesto(p) {
 
 function tablaPresupuestos(presupuestos) {
   return `
-  <div class="tabla-envoltorio"><table>
+  <div class="tabla-envoltorio"><table class="tabla-lista">
     <thead><tr>
       <th>Fecha</th><th>Número</th><th>Cliente</th><th class="num">Base</th><th class="num">Total</th><th>Válido hasta</th><th>Estado</th>
     </tr></thead>
     <tbody>
       ${presupuestos.map((p) => `
         <tr data-id="${p.id}" tabindex="0">
-          <td>${fmtFecha(p.fecha)}</td>
-          <td>${esc(p.numero || '')}</td>
-          <td>${esc(p.clienteSnapshot?.nombre || '')}</td>
-          <td class="num">${fmtEUR(p.base)}</td>
-          <td class="num">${fmtEUR(p.total)}</td>
-          <td>${fmtFecha(p.validoHasta)}</td>
-          <td>${etiquetaPresupuesto(p)}</td>
+          <td class="c-fecha">${fmtFecha(p.fecha)}</td>
+          <td class="c-numero">${esc(p.numero || '')}</td>
+          <td class="c-cliente">${esc(p.clienteSnapshot?.nombre || '')}</td>
+          <td class="num c-base">${fmtEUR(p.base)}</td>
+          <td class="num c-total">${fmtEUR(p.total)}</td>
+          <td class="c-extra">${fmtFecha(p.validoHasta)}</td>
+          <td class="c-estado">${etiquetaPresupuesto(p)}</td>
         </tr>`).join('')}
     </tbody>
   </table></div>`;
@@ -791,8 +791,8 @@ function renderFormularioPresupuesto(presupuesto) {
       </div>
 
       <div class="barra-acciones">
-        <button type="submit" class="primario">Guardar presupuesto (Ctrl+S)</button>
-        <a href="${presupuesto ? `#/presupuestos/${presupuesto.id}` : '#/presupuestos'}">Cancelar (Esc)</a>
+        <button type="submit" class="primario">Guardar presupuesto <span class="atajo">(Ctrl+S)</span></button>
+        <a href="${presupuesto ? `#/presupuestos/${presupuesto.id}` : '#/presupuestos'}">Cancelar <span class="atajo">(Esc)</span></a>
       </div>
     </form>
   `;
@@ -964,7 +964,7 @@ ruta('/gastos', async () => {
     <div class="barra-acciones">
       <label class="filtro-linea">Año <select id="g-anio">${opcionesAnios(anio)}</select></label>
       <div class="espaciador"></div>
-      <button type="button" class="primario" id="btn-nuevo-gasto">Nuevo gasto (n)</button>
+      <button type="button" class="primario" id="btn-nuevo-gasto">Nuevo gasto <span class="atajo">(n)</span></button>
     </div>
     ${gastos.length === 0 ? '<div class="estado-vacio">Todavía no hay gastos en este año. Da de alta el primero con «Nuevo gasto».</div>' : `
     <div class="tabla-envoltorio"><table>
@@ -1017,8 +1017,8 @@ ruta('/gastos/nueva', async () => {
         El IVA de estos suministros no se considera deducible (se ignora el campo de IVA deducible).
       </p>
       <div class="barra-acciones">
-        <button type="submit" class="primario">Guardar gasto (Ctrl+S)</button>
-        <a href="#/gastos">Cancelar (Esc)</a>
+        <button type="submit" class="primario">Guardar gasto <span class="atajo">(Ctrl+S)</span></button>
+        <a href="#/gastos">Cancelar <span class="atajo">(Esc)</span></a>
       </div>
     </form>
   `;
@@ -1066,7 +1066,7 @@ ruta('/inversiones', async () => {
     <h2>Inversiones</h2>
     <div class="barra-acciones">
       <div class="espaciador"></div>
-      <button type="button" class="primario" id="btn-nuevo-bien">Nuevo bien (n)</button>
+      <button type="button" class="primario" id="btn-nuevo-bien">Nuevo bien <span class="atajo">(n)</span></button>
     </div>
     ${bienes.length === 0 ? '<div class="estado-vacio">Todavía no hay bienes de inversión. Da de alta el primero con «Nuevo bien».</div>' : `
     <div class="tabla-envoltorio"><table>
@@ -1110,8 +1110,8 @@ ruta('/inversiones/nuevo', async () => {
         <div class="campo"><label for="bf-afectacion">% afecto a la actividad</label><input id="bf-afectacion" type="number" step="1" value="100"></div>
       </div>
       <div class="barra-acciones">
-        <button type="submit" class="primario">Guardar bien (Ctrl+S)</button>
-        <a href="#/inversiones">Cancelar (Esc)</a>
+        <button type="submit" class="primario">Guardar bien <span class="atajo">(Ctrl+S)</span></button>
+        <a href="#/inversiones">Cancelar <span class="atajo">(Esc)</span></a>
       </div>
     </form>
   `;
@@ -1322,7 +1322,7 @@ ruta('/ajustes', async () => {
       </details>
 
       <div class="barra-acciones">
-        <button type="submit" class="primario">Guardar ajustes (Ctrl+S)</button>
+        <button type="submit" class="primario">Guardar ajustes <span class="atajo">(Ctrl+S)</span></button>
       </div>
     </form>
 

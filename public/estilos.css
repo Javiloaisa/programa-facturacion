@@ -309,9 +309,114 @@ details.avanzado summary { cursor: pointer; font-weight: 600; padding: 0.4em 0; 
 
 @media (max-width: 60em) {
   body { flex-direction: column; }
+  /* En pantalla estrecha el menú va arriba y el contenido debajo (antes #app
+     seguía en fila y el menú se comía el ancho del contenido). */
+  #app { flex-direction: column; }
   nav#nav-lateral { width: 100%; flex-direction: row; overflow-x: auto; padding: 0.5em; }
   nav#nav-lateral h1, nav#nav-lateral .espaciador { display: none; }
   nav#nav-lateral a { border-left: none; border-bottom: 3px solid transparent; white-space: nowrap; }
   nav#nav-lateral a.activo { border-bottom-color: var(--acento); }
   main#contenido { padding: 1em; }
+}
+
+/* --- Móvil ------------------------------------------------------------- */
+/* Solo en pantalla: "Guardar como PDF" desde el móvil también tiene un ancho
+   menor que 60em y no debe heredar nada de esto (ver impresion.css). */
+
+/* Los atajos de teclado no tienen sentido en una pantalla táctil. */
+@media (hover: none) and (pointer: coarse) {
+  .atajo { display: none; }
+}
+
+@media screen and (max-width: 60em) {
+  /* 16px evita que Safari en iPhone haga zoom al tocar un campo. */
+  input, select, textarea { font-size: 16px; min-height: 44px; }
+  button, .boton-enlace { min-height: 44px; }
+  .boton-enlace { display: inline-flex; align-items: center; }
+
+  nav#nav-lateral {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    gap: 0.25em;
+    scrollbar-width: none;
+  }
+  nav#nav-lateral::-webkit-scrollbar { display: none; }
+  nav#nav-lateral a { padding: 0.7em 0.8em; }
+  nav#nav-lateral button { margin: 0 0 0 0.5em; flex-shrink: 0; }
+
+  main#contenido { padding: 1em 0.75em 2em; }
+
+  /* Los botones principales de cada lista ocupan todo el ancho, fáciles de pulsar. */
+  .barra-acciones button.primario { flex: 1 1 100%; }
+
+  /* Listas de facturas y presupuestos: una tarjeta por fila. */
+  .tabla-lista thead { display: none; }
+  .tabla-lista, .tabla-lista tbody { display: block; background: none; }
+  .tabla-lista tr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "numero total"
+      "cliente cliente"
+      "fecha estado";
+    gap: 0.2em 0.75em;
+    align-items: center;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    padding: 0.75em 0.9em;
+    margin-bottom: 0.5em;
+    cursor: pointer;
+  }
+  .tabla-lista td { padding: 0; border: none; }
+  .tabla-lista .c-numero { grid-area: numero; font-weight: 600; }
+  .tabla-lista .c-total { grid-area: total; font-weight: 600; font-size: 1.05em; }
+  .tabla-lista .c-cliente { grid-area: cliente; }
+  .tabla-lista .c-fecha { grid-area: fecha; color: var(--texto-suave); font-size: 0.9em; }
+  .tabla-lista .c-estado { grid-area: estado; display: flex; gap: 0.3em; justify-content: flex-end; }
+  .tabla-lista .c-base { display: none; }
+  /* Cobro (facturas) o "válido hasta" (presupuestos), junto al estado. */
+  .tabla-lista .c-extra { grid-column: 2; grid-row: 4; text-align: right; color: var(--texto-suave); font-size: 0.85em; }
+  .tabla-lista .c-extra:empty { display: none; }
+
+  /* Editor de líneas: concepto a todo el ancho; cantidad, precio y quitar debajo. */
+  #tabla-lineas thead { display: none; }
+  #tabla-lineas, #tabla-lineas tbody { display: block; background: none; }
+  #tabla-lineas tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 0.4em 0.5em;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    padding: 0.6em;
+    margin-bottom: 0.5em;
+  }
+  #tabla-lineas tr:hover { background: var(--superficie); }
+  #tabla-lineas td { padding: 0; border: none; }
+  #tabla-lineas td:first-child { grid-column: 1 / -1; }
+  #tabla-lineas td.num::before {
+    display: block;
+    font-size: 0.8em;
+    color: var(--texto-suave);
+    text-align: left;
+    font-family: var(--fuente);
+    margin-bottom: 0.15em;
+  }
+  #tabla-lineas td.num:nth-child(2)::before { content: "Cantidad"; }
+  #tabla-lineas td.num:nth-child(3)::before { content: "Precio"; }
+  #tabla-lineas td:last-child { align-self: end; }
+  #tabla-lineas td:last-child button { width: 44px; }
+
+  /* Factura y presupuesto en pantalla: sin el margen de folio A4. */
+  .factura-doc { min-height: 0; }
+  .factura-cuerpo { padding: 1.25em 1em; }
+  .factura-mini-tabla { width: 100%; margin-bottom: 1.5em; }
+  .factura-partes { grid-template-columns: 1fr; gap: 1.25em; margin-bottom: 1.5em; }
+  .factura-lineas { font-size: 0.9em; }
+  .factura-lineas thead th, .factura-lineas td { padding: 0.5em 0.4em; }
+  .factura-lineas td.num, .factura-lineas th.num { white-space: nowrap; }
+  .factura-doc .totales { width: 100%; }
+  .factura-pago-valor { overflow-wrap: anywhere; }
 }
