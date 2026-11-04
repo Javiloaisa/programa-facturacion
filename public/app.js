@@ -334,8 +334,25 @@ function tablaFacturas(facturas) {
   </table></div>`;
 }
 
+// #/facturas/nueva?cliente=Entrena (desde Al día): ese cliente elegido y las líneas de su
+// última factura copiadas, para revisarlas y guardar. Sin coincidencia, formulario vacío.
 ruta('/facturas/nueva', async () => {
-  renderFormularioFactura(null);
+  const nombre = (consultaRuta().get('cliente') || '').trim().toLowerCase();
+  if (!nombre) { renderFormularioFactura(null); return; }
+  const cliente = estado.clientes.find((cl) => cl.nombre.toLowerCase() === nombre)
+    || estado.clientes.find((cl) => cl.nombre.toLowerCase().includes(nombre) || nombre.includes(cl.nombre.toLowerCase()));
+  if (!cliente) {
+    renderFormularioFactura(null, null, `No hay ningún cliente que se llame «${consultaRuta().get('cliente')}»: elígelo en la lista.`);
+    return;
+  }
+  const facturas = await api('GET', '/api/facturas');
+  const ultima = facturas
+    .filter((f) => f.clienteId === cliente.id && f.estado === 'confirmada' && !f.rectificaA)
+    .sort((a, b) => b.fecha.localeCompare(a.fecha))[0];
+  const plantilla = { clienteId: cliente.id, lineas: ultima ? ultima.lineas.map(({ concepto, cantidad, precio }) => ({ concepto, cantidad, precio })) : [] };
+  renderFormularioFactura(null, plantilla, ultima
+    ? `Líneas copiadas de la factura ${ultima.numero} (${fmtFecha(ultima.fecha)}). Revísalas antes de guardar.`
+    : `${cliente.nombre} todavía no tiene facturas: añade las líneas.`);
 });
 
 ruta('/facturas/:id', async ({ id }) => {
@@ -346,22 +363,26 @@ ruta('/facturas/:id', async ({ id }) => {
   else renderDetalleFactura(factura);
 });
 
-function renderFormularioFactura(factura) {
+function renderFormularioFactura(factura, plantilla = null, aviso = '') {
   if (estado.clientes.length === 0) {
     $contenido.innerHTML = `<div class="estado-vacio">Necesitas al menos un cliente antes de facturar. <a href="#/clientes">Crea uno aquí</a>.</div>`;
     return;
   }
   const c = estado.config;
-  const lineas = factura?.lineas?.length ? factura.lineas : [{ concepto: '', cantidad: 1, precio: 0 }];
+  const lineas = factura?.lineas?.length ? factura.lineas
+    : plantilla?.lineas?.length ? plantilla.lineas
+    : [{ concepto: '', cantidad: 1, precio: 0 }];
+  const clienteId = factura?.clienteId ?? plantilla?.clienteId;
 
   $contenido.innerHTML = `
     <h2>${factura ? 'Editar borrador' : 'Nueva factura'}</h2>
+    ${aviso ? `<p class="mensaje-info">${esc(aviso)}</p>` : ''}
     <form id="form-factura">
       <div class="fila-campos">
         <div class="campo">
           <label for="ff-cliente">Cliente</label>
           <select id="ff-cliente" required>
-            ${estado.clientes.map((cl) => `<option value="${cl.id}" ${factura?.clienteId === cl.id ? 'selected' : ''}>${esc(cl.nombre)}</option>`).join('')}
+            ${estado.clientes.map((cl) => `<option value="${cl.id}" ${clienteId === cl.id ? 'selected' : ''}>${esc(cl.nombre)}</option>`).join('')}
           </select>
         </div>
         <div class="campo">
