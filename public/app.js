@@ -70,6 +70,37 @@ function descargar(ruta) {
   a.remove();
 }
 
+// Imprimir / guardar como PDF. El navegador del móvil maqueta la impresión
+// con el ancho de su pantalla (~400px) y luego la amplía al folio, así que
+// la factura salía grande y en dos hojas. Mientras se imprime se le da un
+// viewport del ancho de un A4 (794px) para que maquete como el ordenador.
+// El título del documento pasa a ser el nombre por defecto del PDF.
+const ANCHO_A4_PX = 794;
+// Se leen una sola vez: si se pulsa otra vez antes de restaurar, no se
+// tomaría por "original" el viewport de impresión.
+const viewportOriginal = document.querySelector('meta[name=viewport]').content;
+const tituloOriginal = document.title;
+
+function imprimirDocumento(titulo) {
+  const viewport = document.querySelector('meta[name=viewport]');
+  viewport.content = `width=${ANCHO_A4_PX}`;
+  document.title = titulo;
+
+  // En el móvil window.print() no espera a que se cierre el diálogo y
+  // afterprint puede llegar antes de que se genere el PDF: se restaura en
+  // la siguiente interacción con la página, que ya es posterior al diálogo.
+  const restaurar = () => {
+    viewport.content = viewportOriginal;
+    document.title = tituloOriginal;
+    for (const ev of ['pointerdown', 'keydown', 'hashchange']) window.removeEventListener(ev, restaurar, true);
+  };
+  // Dos fotogramas para que el navegador maquete con el nuevo viewport antes de imprimir.
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    window.print();
+    for (const ev of ['pointerdown', 'keydown', 'hashchange']) window.addEventListener(ev, restaurar, true);
+  }));
+}
+
 // ---------------------------------------------------------------------------
 // Formato
 // ---------------------------------------------------------------------------
@@ -527,7 +558,7 @@ function renderDetalleFactura(f, esUltima = false) {
       ${f.estado === 'confirmada' && esUltima && !estado.soloLectura ? `<button id="btn-desconfirmar">Deshacer confirmación</button>` : ''}
       ${f.estado === 'confirmada' && !f.cobrada && !estado.soloLectura ? `<button id="btn-cobrar">Marcar cobrada</button>` : ''}
       ${f.estado === 'confirmada' && f.tipo !== 'R1' && !estado.soloLectura ? `<button id="btn-rectificar">Rectificar</button>` : ''}
-      <button id="btn-imprimir" class="primario">Imprimir</button>
+      <button id="btn-imprimir" class="primario">Descargar PDF</button>
     </div>
     <article class="factura-doc">
       <div class="factura-cuerpo">
@@ -585,7 +616,7 @@ function renderDetalleFactura(f, esUltima = false) {
       </div>
     </article>
   `;
-  document.getElementById('btn-imprimir').addEventListener('click', () => window.print());
+  document.getElementById('btn-imprimir').addEventListener('click', () => imprimirDocumento(`Factura ${f.numero || 'borrador'}`));
   document.getElementById('btn-cobrar')?.addEventListener('click', async () => {
     const fecha = prompt('Fecha de cobro (AAAA-MM-DD):', new Date().toISOString().slice(0, 10));
     if (!fecha) return;
@@ -936,7 +967,7 @@ function renderDetallePresupuesto(p) {
         ? `<a class="boton-enlace" href="#/facturas/${p.facturaId}">Ver factura</a>`
         : `<button id="btn-convertir" ${estado.soloLectura ? 'disabled' : ''}>Convertir en factura</button>`}
       ${p.facturaId ? '' : `<button id="btn-borrar-presupuesto">Borrar</button>`}
-      <button id="btn-imprimir" class="primario">Imprimir</button>
+      <button id="btn-imprimir" class="primario">Descargar PDF</button>
     </div>
     ${caducado ? `<p class="mensaje-info no-imprimir">Este presupuesto venció el ${fmtFecha(p.validoHasta)}. Si sigue en pie, edítalo para renovar la fecha.</p>` : ''}
     ${p.facturaId ? `<p class="mensaje-info no-imprimir">Ya convertido en factura: para cambiar importes, edita la factura.</p>` : ''}
@@ -994,7 +1025,7 @@ function renderDetallePresupuesto(p) {
     </article>
   `;
 
-  document.getElementById('btn-imprimir').addEventListener('click', () => window.print());
+  document.getElementById('btn-imprimir').addEventListener('click', () => imprimirDocumento(`Presupuesto ${p.numero || ''}`.trim()));
 
   async function cambiarEstado(nuevo) {
     try { await api('POST', `/api/presupuestos/${p.id}/estado`, { estado: nuevo }); renderRuta(); }

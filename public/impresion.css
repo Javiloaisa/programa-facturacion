@@ -18,6 +18,10 @@
     print-color-adjust: exact;
   }
 
+  /* Sin el agrandado automático de texto de los navegadores de móvil. */
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  /* height/min-height de pantalla (100%, 100vh) no pintan nada en papel. */
+  html, body { height: auto; min-height: 0; }
   body, #app { display: block; background: #fff; }
   main#contenido { padding: 0; max-width: none; }
 
