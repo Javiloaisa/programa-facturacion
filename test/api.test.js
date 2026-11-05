@@ -795,3 +795,58 @@ describe('API — deshacer la confirmación y borrar borradores', () => {
     assert.equal((await cliente.peticion('DELETE', `/api/facturas/${f.id}`)).status, 409);
   });
 });
+
+// ---------------------------------------------------------------------------
+// PDF para enviar al cliente
+// ---------------------------------------------------------------------------
+
+describe('API — PDF de factura y presupuesto', () => {
+  let ctx;
+  let cliente;
+  const authObj = auth.crearAuth(PASSWORD);
+  const lineas = [{ concepto: 'Diseño', cantidad: 1, precio: 100 }];
+
+  before(async () => {
+    ctx = await levantarApp({ auth: authObj });
+    cliente = crearCliente(ctx.port);
+    await cliente.peticion('POST', '/api/login', { password: PASSWORD });
+    await cliente.peticion('POST', '/api/clientes/cp', { nombre: 'Cliente PDF', nif: 'B12345674' });
+  });
+
+  after(async () => {
+    await ctx.cerrar();
+  });
+
+  test('GET /api/facturas/:id/pdf devuelve el PDF como descarga con su nombre', async () => {
+    const f = await cliente.peticion('POST', '/api/facturas', { clienteId: 'cp', fecha: '2026-06-01', lineas });
+    await cliente.peticion('POST', `/api/facturas/${f.body.id}/confirmar`, null);
+    const r = await cliente.peticion('GET', `/api/facturas/${f.body.id}/pdf`);
+    assert.equal(r.status, 200);
+    assert.equal(r.headers['content-type'], 'application/pdf');
+    assert.ok(r.headers['content-disposition'].includes('filename="Factura A-0001.pdf"'));
+    assert.ok(r.body.startsWith('%PDF-'));
+    assert.ok(r.body.trimEnd().endsWith('%%EOF'));
+  });
+
+  test('un borrador también tiene PDF', async () => {
+    const f = await cliente.peticion('POST', '/api/facturas', { clienteId: 'cp', fecha: '2026-06-02', lineas });
+    const r = await cliente.peticion('GET', `/api/facturas/${f.body.id}/pdf`);
+    assert.equal(r.status, 200);
+    assert.ok(r.headers['content-disposition'].includes('filename="Factura borrador.pdf"'));
+  });
+
+  test('GET /api/presupuestos/:id/pdf devuelve el PDF del presupuesto', async () => {
+    const p = await cliente.peticion('POST', '/api/presupuestos', { clienteId: 'cp', fecha: '2026-06-01', lineas });
+    const r = await cliente.peticion('GET', `/api/presupuestos/${p.body.id}/pdf`);
+    assert.equal(r.status, 200);
+    assert.ok(r.headers['content-disposition'].includes('filename="Presupuesto P-0001.pdf"'));
+    assert.ok(r.body.startsWith('%PDF-'));
+  });
+
+  test('id inexistente -> 404; sin sesión -> 401', async () => {
+    assert.equal((await cliente.peticion('GET', '/api/facturas/no-existe/pdf')).status, 404);
+    assert.equal((await cliente.peticion('GET', '/api/presupuestos/no-existe/pdf')).status, 404);
+    const anonimo = crearCliente(ctx.port);
+    assert.equal((await anonimo.peticion('GET', '/api/facturas/no-existe/pdf')).status, 401);
+  });
+});

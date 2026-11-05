@@ -14,8 +14,10 @@ const {
   enviarError,
   isoConHuso,
   enviarCSV,
+  enviarPDF,
   servirEstatico,
 } = require('./lib/http-utils.js');
+const pdf = require('./lib/pdf.js');
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
@@ -606,6 +608,14 @@ function registrarRutas(router, { store, estado, revisarIntegridad }) {
     enviarJSON(res, 200, facturaDeshecha);
   });
 
+  // PDF para enviar al cliente (botón "Enviar PDF": WhatsApp, correo...).
+  router.get('/api/facturas/:id/pdf', async (req, res, ctx, { id }) => {
+    const [facturas, config] = await Promise.all([store.leer('facturas'), store.leer('config')]);
+    const factura = facturas.find((f) => f.id === id);
+    if (!factura) throw new ErrorHttp(404, 'Factura no encontrada.');
+    enviarPDF(res, `${pdf.nombreFactura(factura)}.pdf`, pdf.pdfFactura(factura, config.emisor || {}));
+  });
+
   // Un borrador no tiene número ni efectos fiscales: se puede borrar. Si
   // venía de un presupuesto, el presupuesto vuelve a poder convertirse.
   router.del('/api/facturas/:id', async (req, res, ctx, { id }) => {
@@ -719,6 +729,13 @@ function registrarRutas(router, { store, estado, revisarIntegridad }) {
     if (clienteId) presupuestos = presupuestos.filter((p) => p.clienteId === clienteId);
     if (estadoFiltro) presupuestos = presupuestos.filter((p) => p.estado === estadoFiltro);
     enviarJSON(res, 200, presupuestos);
+  });
+
+  router.get('/api/presupuestos/:id/pdf', async (req, res, ctx, { id }) => {
+    const [presupuestos, config] = await Promise.all([store.leer('presupuestos'), store.leer('config')]);
+    const presupuesto = presupuestos.find((p) => p.id === id);
+    if (!presupuesto) throw new ErrorHttp(404, 'Presupuesto no encontrado.');
+    enviarPDF(res, `${pdf.nombrePresupuesto(presupuesto)}.pdf`, pdf.pdfPresupuesto(presupuesto, config.emisor || {}));
   });
 
   router.post('/api/presupuestos', async (req, res) => {

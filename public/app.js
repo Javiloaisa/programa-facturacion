@@ -101,6 +101,54 @@ function imprimirDocumento(titulo) {
   }));
 }
 
+// Enviar el PDF (WhatsApp, correo...) con el menú de compartir del sistema.
+// El PDF lo genera el servidor y se pide ya al abrir la vista: el navegador
+// solo deja abrir el menú de compartir justo después de un toque, y en el
+// iPhone ese margen no da para esperar a la red. Donde no hay menú de
+// compartir con ficheros (algunos navegadores de escritorio) se descarga.
+function prepararEnvioPdf(boton, ruta, nombre) {
+  const nombreFichero = `${nombre}.pdf`;
+  const cargar = async () => {
+    const res = await fetch(ruta, { credentials: 'same-origin' });
+    if (res.status === 401) { mostrarLogin(); throw new ErrorApi(401, 'No autenticado.'); }
+    if (!res.ok) throw new ErrorApi(res.status, 'No se pudo generar el PDF.');
+    return new File([await res.blob()], nombreFichero, { type: 'application/pdf' });
+  };
+  let pendiente = cargar();
+  pendiente.catch(() => {}); // el error se enseña al pulsar, no antes
+
+  boton.addEventListener('click', async () => {
+    let fichero;
+    try {
+      fichero = await pendiente;
+    } catch (err) {
+      pendiente = cargar();
+      pendiente.catch(() => {});
+      if (err.status !== 401) alert(err.message);
+      return;
+    }
+    if (navigator.canShare?.({ files: [fichero] })) {
+      try {
+        await navigator.share({ files: [fichero], title: nombre });
+      } catch (err) {
+        if (err.name === 'AbortError') return; // menú cerrado sin elegir
+        alert(err.name === 'NotAllowedError'
+          ? 'El navegador no ha dejado abrir el menú de compartir. Vuelve a pulsar «Enviar PDF».'
+          : `No se pudo compartir el PDF: ${err.message}`);
+      }
+      return;
+    }
+    const url = URL.createObjectURL(fichero);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nombreFichero;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Formato
 // ---------------------------------------------------------------------------
@@ -558,6 +606,7 @@ function renderDetalleFactura(f, esUltima = false) {
       ${f.estado === 'confirmada' && esUltima && !estado.soloLectura ? `<button id="btn-desconfirmar">Deshacer confirmación</button>` : ''}
       ${f.estado === 'confirmada' && !f.cobrada && !estado.soloLectura ? `<button id="btn-cobrar">Marcar cobrada</button>` : ''}
       ${f.estado === 'confirmada' && f.tipo !== 'R1' && !estado.soloLectura ? `<button id="btn-rectificar">Rectificar</button>` : ''}
+      <button id="btn-enviar-pdf">Enviar PDF</button>
       <button id="btn-imprimir" class="primario">Descargar PDF</button>
     </div>
     <article class="factura-doc">
@@ -617,6 +666,7 @@ function renderDetalleFactura(f, esUltima = false) {
     </article>
   `;
   document.getElementById('btn-imprimir').addEventListener('click', () => imprimirDocumento(`Factura ${f.numero || 'borrador'}`));
+  prepararEnvioPdf(document.getElementById('btn-enviar-pdf'), `/api/facturas/${encodeURIComponent(f.id)}/pdf`, `Factura ${f.numero || 'borrador'}`);
   document.getElementById('btn-cobrar')?.addEventListener('click', async () => {
     const fecha = prompt('Fecha de cobro (AAAA-MM-DD):', new Date().toISOString().slice(0, 10));
     if (!fecha) return;
@@ -967,6 +1017,7 @@ function renderDetallePresupuesto(p) {
         ? `<a class="boton-enlace" href="#/facturas/${p.facturaId}">Ver factura</a>`
         : `<button id="btn-convertir" ${estado.soloLectura ? 'disabled' : ''}>Convertir en factura</button>`}
       ${p.facturaId ? '' : `<button id="btn-borrar-presupuesto">Borrar</button>`}
+      <button id="btn-enviar-pdf">Enviar PDF</button>
       <button id="btn-imprimir" class="primario">Descargar PDF</button>
     </div>
     ${caducado ? `<p class="mensaje-info no-imprimir">Este presupuesto venció el ${fmtFecha(p.validoHasta)}. Si sigue en pie, edítalo para renovar la fecha.</p>` : ''}
@@ -1026,6 +1077,7 @@ function renderDetallePresupuesto(p) {
   `;
 
   document.getElementById('btn-imprimir').addEventListener('click', () => imprimirDocumento(`Presupuesto ${p.numero || ''}`.trim()));
+  prepararEnvioPdf(document.getElementById('btn-enviar-pdf'), `/api/presupuestos/${encodeURIComponent(p.id)}/pdf`, `Presupuesto ${p.numero || ''}`.trim());
 
   async function cambiarEstado(nuevo) {
     try { await api('POST', `/api/presupuestos/${p.id}/estado`, { estado: nuevo }); renderRuta(); }
